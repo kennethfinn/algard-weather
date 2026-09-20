@@ -43,6 +43,7 @@
       border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer
     }
     button:hover{filter:brightness(1.08)}
+    button:disabled{opacity:.55;cursor:wait;filter:none}
     .status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;margin:0 0 14px}
     .dot{width:8px;height:8px;border-radius:50%;background:var(--mid);flex:0 0 auto}
     .dot.ok{background:var(--good)}
@@ -112,7 +113,7 @@
   <header>
     <div>
       <h1>Ålgård MultiModel</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.3 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.4 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -474,8 +475,16 @@
     });
   }
 
+  const CHART_IDS = ['tempChart','precipChart','windChart','dirChart','rhChart'];
+
+  function destroyCanvasChart(id){
+    const existing = Chart.getChart(id);
+    if(existing) existing.destroy();
+  }
+
   function destroyCharts(){
-    while(charts.length) charts.pop().destroy();
+    CHART_IDS.forEach(destroyCanvasChart);
+    charts.length = 0;
   }
 
   function tickLabel(t){
@@ -572,6 +581,7 @@
   }
 
   function makeLine(id,times,models,field,unit,minY=null,maxY=null){
+    destroyCanvasChart(id);
     const chart = new Chart($(id),{
       type:'line',
       data:{labels:times,datasets:datasetsForLine(models,field,times)},
@@ -581,6 +591,7 @@
   }
 
   function makePrecip(times,models){
+    destroyCanvasChart('precipChart');
     const avg = times.map((_,i) => mean(valuesAt(models,'precip',i)));
     const ds = models.map((m,i) => ({
       type:'line',label:m.name,data:m.precip,
@@ -602,6 +613,7 @@
   }
 
   function makeDirection(times,models){
+    destroyCanvasChart('dirChart');
     const avg = times.map((_,i) => circularMean(valuesAt(models,'dir',i)));
     const ds = models.map((m,i) => ({
       label:m.name,data:m.dir,showLine:false,
@@ -655,7 +667,7 @@
 
     $('tempNow').textContent = `${fmt(mean(tv),1)} °C`;
     $('tempSpread').textContent =
-      `i dag min ${fmt(minv(todayTempMean),1)} °C · maks ${fmt(maxv(todayTempMean),1)} °C`;
+      `i dag ${fmt(minv(todayTempMean),1)}–${fmt(maxv(todayTempMean),1)} °C`;
 
     $('precipNow').textContent = `${fmt(mean(pv),2)} mm/h`;
 
@@ -684,7 +696,7 @@
 
     $('rhNow').textContent = `${fmt(mean(rv),0)} %`;
     $('rhNow').nextElementSibling.textContent =
-      `i dag min ${fmt(minv(todayRhMean),0)} % · maks ${fmt(maxv(todayRhMean),0)} %`;
+      `i dag ${fmt(minv(todayRhMean),0)}–${fmt(maxv(todayRhMean),0)} %`;
 
     $('modelCount').textContent = `${tv.length}`;
     $('updateTime').textContent = 'sist lastet ' + new Intl.DateTimeFormat('nb-NO',{
@@ -692,12 +704,23 @@
     }).format(new Date());
   }
 
+  let loadInProgress = false;
+
+  function finishLoad(){
+    loadInProgress = false;
+    $('refreshBtn').disabled = false;
+  }
+
   async function load(){
+    if(loadInProgress) return;
+    loadInProgress = true;
+    $('refreshBtn').disabled = true;
     $('errorBox').style.display = 'none';
     setStatus('Henter siste modelldata …');
 
     if(typeof Chart === 'undefined'){
       showError('Grafbiblioteket kunne ikke lastes. Kontroller nettforbindelsen og last siden på nytt.');
+      finishLoad();
       return;
     }
 
@@ -715,6 +738,7 @@
 
     if(ok.length < 2){
       showError(`Bare ${ok.length} modell kunne lastes. MultiModel-visningen trenger minst to. Prøv igjen senere.`);
+      finishLoad();
       return;
     }
 
@@ -735,12 +759,14 @@
     }catch(e){
       console.error(e);
       showError(`Dataene er lastet, men grafene kunne ikke tegnes: ${e.message}`);
+      finishLoad();
       return;
     }
 
     const suffix = failed.length ? ` · ${failed.length} modell${failed.length === 1 ? '' : 'er'} utilgjengelig` : '';
     const historySuffix = recentHistoryResult.ok ? '' : ' · nedbørshistorikk utilgjengelig';
     setStatus(`Oppdatert med ${models.length} værmodeller${suffix}${historySuffix}`,'ok');
+    finishLoad();
   }
 
   $('refreshBtn').addEventListener('click', load);
