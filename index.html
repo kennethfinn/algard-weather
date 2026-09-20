@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a1220">
   <meta name="description" content="Automatisk oppdatert MultiModel-værvisualisering for Ålgård, Rogaland.">
-  <title>Ålgård MultiModel</title>
+  <title>Ålgård DidWell</title>
   <style>
     :root{
       color-scheme:dark;
@@ -60,6 +60,12 @@
     .card{padding:15px;min-width:0}
     .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.075em}
     .value{font-size:27px;font-weight:780;margin-top:5px;white-space:nowrap}
+    .wind-value-line{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:5px}
+    .wind-value-line .value{margin-top:0}
+    .temp-value-grid,.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:0}
+    .temp-value-grid .metric,.metric-grid .metric{min-width:0}
+    .temp-value-grid .metric .label,.metric-grid .metric .label{white-space:normal;line-height:1.25}
+    .temp-value-grid .metric .value,.metric-grid .metric .value{margin-top:5px}
     .detail{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
     .section-title{font-size:17px;font-weight:750;margin:16px 0 8px}
     .days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 12px}
@@ -71,6 +77,7 @@
     .confidence.high{background:rgba(91,214,173,.14);color:#91edce}
     .confidence.medium{background:rgba(255,209,102,.14);color:#ffe19b}
     .confidence.low{background:rgba(255,125,138,.14);color:#ffb0b8}
+    .trend-arrow{font-size:.95em;vertical-align:.04em}
     .models{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
     .model{
       display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);
@@ -100,6 +107,11 @@
       .cards{grid-template-columns:1fr 1fr;gap:8px}
       .card{padding:12px}
       .value{font-size:23px}
+      .wind-value-line{gap:8px}
+      .wind-value-line .value{font-size:21px}
+      .temp-value-grid,.metric-grid{gap:10px}
+      .temp-value-grid .metric .value,.metric-grid .metric .value{font-size:21px}
+      .temp-value-grid .metric .label,.metric-grid .metric .label{font-size:10px}
       .days{grid-template-columns:1fr 1fr}
       .day{min-height:128px}
       .panel{padding:11px}
@@ -112,8 +124,8 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>Ålgård MultiModel</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.4 · oppdateres automatisk når siden åpnes</div>
+      <h1>Ålgård DidWell</h1>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.13 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -129,19 +141,56 @@
 
   <section class="cards">
     <div class="card">
-      <div class="label">Temperatur nå</div>
-      <div id="tempNow" class="value">–</div>
+      <div class="temp-value-grid">
+        <div class="metric">
+          <div class="label">Temperatur nå</div>
+          <div id="tempNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Opplevd temperatur</div>
+          <div id="apparentNow" class="value">–</div>
+        </div>
+      </div>
       <div id="tempSpread" class="detail">–</div>
     </div>
     <div class="card">
-      <div class="label">Nedbør nå</div>
-      <div id="precipNow" class="value">–</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Nedbør nå</div>
+          <div id="precipNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Siste 24 timer</div>
+          <div id="precip24h" class="value">–</div>
+        </div>
+      </div>
       <div id="precipAgreement" class="detail">–</div>
     </div>
     <div class="card">
-      <div class="label">Vind nå</div>
-      <div id="windNow" class="value">–</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Vind nå</div>
+          <div id="windNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Vindretning</div>
+          <div id="windDirNow" class="value">–</div>
+        </div>
+      </div>
       <div id="windSpread" class="detail">–</div>
+    </div>
+    <div class="card">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Vind nå · km/t</div>
+          <div id="windNowKmh" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Vindretning</div>
+          <div id="windDirNowKmh" class="value">–</div>
+        </div>
+      </div>
+      <div id="windSpreadKmh" class="detail">–</div>
     </div>
     <div class="card">
       <div class="label">Luftfuktighet</div>
@@ -149,9 +198,31 @@
       <div class="detail">modellgjennomsnitt</div>
     </div>
     <div class="card">
-      <div class="label">Aktive modeller nå</div>
-      <div id="modelCount" class="value">–</div>
-      <div id="updateTime" class="detail">–</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Soloppgang</div>
+          <div id="sunriseNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Solnedgang</div>
+          <div id="sunsetNow" class="value">–</div>
+        </div>
+      </div>
+      <div id="daylightDetail" class="detail">astronomiske tider for Ålgård</div>
+    </div>
+    <div class="card">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Lufttrykk</div>
+          <div id="pressureNow" class="value">–</div>
+          <div class="detail">Havnivåtrykk</div>
+        </div>
+        <div class="metric">
+          <div class="label">Trend · 12 timer</div>
+          <div id="pressureTrend" class="value">–</div>
+          <div id="pressureDetail" class="detail">–</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -181,16 +252,15 @@
       <p>Prosent relativ luftfuktighet fra tilgjengelige modeller.</p>
       <div class="chart-wrap"><canvas id="rhChart"></canvas></div>
     </div>
+    <div class="panel">
+      <h2>Lufttrykk</h2>
+      <p>Havnivåtrykk fra tilgjengelige modeller. Hvit linje er modellgjennomsnitt.</p>
+      <div class="chart-wrap"><canvas id="pressureChart"></canvas></div>
+    </div>
   </section>
 
   <div class="section-title">Modeller</div>
   <div id="models" class="models"></div>
-
-  <div class="note">
-    <strong>Om «enighet»:</strong> Høy / middels / lav er en lokal indikator beregnet fra modellspredning i temperatur og vind, uenighet om nedbør og hvor mange modeller som fortsatt dekker tidsrommet. Den er ikke en offisiell sannsynlighetsprognose.
-    Lokale høyoppløselige modeller har kortere prognosehorisont enn globale modeller, og forsvinner derfor fra beregningen når deres egne data tar slutt.
-  </div>
-
   <footer>
     Data leveres via <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>.
     Modellkilder: ECMWF, NOAA/NCEP, DWD, Environment and Climate Change Canada, Météo-France, MET Norway, DMI, UK Met Office og KNMI.
@@ -300,7 +370,7 @@
       timezone: 'Europe/Oslo',
       forecast_days: '7',
       wind_speed_unit: 'ms',
-      hourly: 'temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+      hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,precipitation,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
       models: spec.id
     });
 
@@ -310,8 +380,11 @@
     const hourly = data.hourly || {};
 
     const tempKey = keyFor(hourly,'temperature_2m',spec.id);
+    const apparentKey = keyFor(hourly,'apparent_temperature',spec.id);
+    const dewKey = keyFor(hourly,'dew_point_2m',spec.id);
     const rhKey = keyFor(hourly,'relative_humidity_2m',spec.id);
     const precipKey = keyFor(hourly,'precipitation',spec.id);
+    const pressureKey = keyFor(hourly,'pressure_msl',spec.id);
     const windKey = keyFor(hourly,'wind_speed_10m',spec.id);
     const dirKey = keyFor(hourly,'wind_direction_10m',spec.id);
     const gustKey = keyFor(hourly,'wind_gusts_10m',spec.id);
@@ -322,8 +395,11 @@
       ...spec,
       times: hourly.time,
       temp: hourly[tempKey] || [],
+      apparent: apparentKey ? hourly[apparentKey] : [],
+      dew: dewKey ? hourly[dewKey] : [],
       rh: rhKey ? hourly[rhKey] : [],
       precip: precipKey ? hourly[precipKey] : [],
+      pressure: pressureKey ? hourly[pressureKey] : [],
       wind: windKey ? hourly[windKey] : [],
       dir: dirKey ? hourly[dirKey] : [],
       gust: gustKey ? hourly[gustKey] : []
@@ -341,7 +417,7 @@
           const v = i === undefined ? null : m[field][i];
           return finite(v) ? v : null;
         });
-        return {...m, temp:aligned('temp'), rh:aligned('rh'), precip:aligned('precip'), wind:aligned('wind'), dir:aligned('dir'), gust:aligned('gust')};
+        return {...m, temp:aligned('temp'), apparent:aligned('apparent'), dew:aligned('dew'), rh:aligned('rh'), precip:aligned('precip'), pressure:aligned('pressure'), wind:aligned('wind'), dir:aligned('dir'), gust:aligned('gust')};
       })
     };
   }
@@ -382,6 +458,61 @@
     if(!res.ok) throw new Error(`historikk HTTP ${res.status}`);
     const data = await res.json();
     return data.hourly || {time:[],precipitation:[]};
+  }
+
+  async function fetchLocalExtras(){
+    const params = new URLSearchParams({
+      latitude: LAT,
+      longitude: LON,
+      elevation: ELEVATION,
+      timezone: 'Europe/Oslo',
+      forecast_days: '1',
+      daily: 'sunrise,sunset,daylight_duration,sunshine_duration'
+    });
+    const res = await fetch(`${API}?${params.toString()}`, {cache:'no-store'});
+    if(!res.ok) throw new Error(`lokaldata HTTP ${res.status}`);
+    return await res.json();
+  }
+
+  function timeOnly(iso){
+    if(!iso || !iso.includes('T')) return '–';
+    return iso.split('T')[1].slice(0,5);
+  }
+
+  function renderLocalExtras(data){
+    if(!data){
+      $('sunriseNow').textContent = '–';
+      $('sunsetNow').textContent = '–';
+      $('daylightDetail').textContent = 'soldata utilgjengelig';
+      return;
+    }
+
+    const sunrise = data.daily?.sunrise?.[0];
+    const sunset = data.daily?.sunset?.[0];
+    $('sunriseNow').textContent = timeOnly(sunrise);
+    $('sunsetNow').textContent = timeOnly(sunset);
+
+    const daylightSeconds = data.daily?.daylight_duration?.[0];
+    const sunshineSeconds = data.daily?.sunshine_duration?.[0];
+
+    let daylightMinutes = finite(daylightSeconds) ? Math.round(daylightSeconds/60) : null;
+    if(!finite(daylightMinutes) && sunrise && sunset){
+      const start = new Date(sunrise).getTime();
+      const end = new Date(sunset).getTime();
+      const mins = Math.round((end-start)/60000);
+      if(Number.isFinite(mins) && mins > 0) daylightMinutes = mins;
+    }
+
+    const sunshineMinutes = finite(sunshineSeconds) ? Math.round(sunshineSeconds/60) : null;
+    const daylightText = finite(daylightMinutes)
+      ? `${Math.floor(daylightMinutes/60)} t ${daylightMinutes%60} min`
+      : '–';
+    const sunshineText = finite(sunshineMinutes)
+      ? `${Math.floor(sunshineMinutes/60)} t ${sunshineMinutes%60} min`
+      : '–';
+
+    $('daylightDetail').textContent =
+      `Dagslys ${daylightText} · soltimer ${sunshineText}`;
   }
 
   function lastAvailableIndex(m){
@@ -475,7 +606,7 @@
     });
   }
 
-  const CHART_IDS = ['tempChart','precipChart','windChart','dirChart','rhChart'];
+  const CHART_IDS = ['tempChart','precipChart','windChart','dirChart','rhChart','pressureChart'];
 
   function destroyCanvasChart(id){
     const existing = Chart.getChart(id);
@@ -502,6 +633,7 @@
     if(unit === 'mm/h') return `${v.toFixed(2).replace('.',',')} mm/h`;
     if(unit === '%') return `${v.toFixed(0)} %`;
     if(unit === 'm/s') return `${v.toFixed(1).replace('.',',')} m/s`;
+    if(unit === 'mbar') return `${v.toFixed(1).replace('.',',')} mbar`;
     return `${v.toFixed(1).replace('.',',')} °C`;
   }
 
@@ -640,7 +772,10 @@
     if(idx < 0) idx = 0;
 
     const tv = valuesAt(models,'temp',idx);
+    const av = valuesAt(models,'apparent',idx);
+    const dewV = valuesAt(models,'dew',idx);
     const pv = valuesAt(models,'precip',idx);
+    const pressv = valuesAt(models,'pressure',idx);
     const wv = valuesAt(models,'wind',idx);
     const rv = valuesAt(models,'rh',idx);
     const dv = valuesAt(models,'dir',idx);
@@ -666,12 +801,14 @@
       .filter(finite);
 
     $('tempNow').textContent = `${fmt(mean(tv),1)} °C`;
+    $('apparentNow').textContent = `${fmt(mean(av),1)} °C`;
     $('tempSpread').textContent =
-      `i dag ${fmt(minv(todayTempMean),1)}–${fmt(maxv(todayTempMean),1)} °C`;
+      `i dag ${fmt(minv(todayTempMean),1)}–${fmt(maxv(todayTempMean),1)} °C · duggpunkt ${fmt(mean(dewV),1)} °C`;
 
     $('precipNow').textContent = `${fmt(mean(pv),2)} mm/h`;
 
     let todayPrecip = null;
+    let precip24h = null;
     let precip30d = null;
     if(recentHistory && Array.isArray(recentHistory.time) && Array.isArray(recentHistory.precipitation)){
       const hist = recentHistory.time.map((t,i) => ({
@@ -681,27 +818,63 @@
 
       const last720 = hist.slice(-720);
       precip30d = last720.length ? last720.reduce((s,x) => s + x.p, 0) : null;
+      const last24 = hist.slice(-24);
+      precip24h = last24.length ? last24.reduce((s,x) => s + x.p, 0) : null;
       const todayRows = hist.filter(x => x.t.startsWith(today));
       todayPrecip = todayRows.length ? todayRows.reduce((s,x) => s + x.p, 0) : 0;
     }
 
+    $('precip24h').textContent = `${fmt(precip24h,1)} mm`;
     $('precipAgreement').textContent =
       `i dag hittil ${fmt(todayPrecip,1)} mm · siste 30 døgn ${fmt(precip30d,1)} mm`;
 
     const direction = circularMean(dv);
+    const directionText = `${cardinal(direction)} ${fmt(direction,0)}°`;
     const gustNow = mean(gv);
-    $('windNow').textContent = `${fmt(mean(wv),1)} m/s`;
+    const windMean = mean(wv);
+    const windMinToday = minv(elapsedWindMean);
+    const windMaxToday = maxv(elapsedWindMean);
+
+    $('windNow').textContent = `${fmt(windMean,1)} m/s`;
+    $('windDirNow').textContent = directionText;
     $('windSpread').textContent =
-      `${cardinal(direction)} ${fmt(direction,0)}° · kast ${fmt(gustNow,1)} m/s · hittil i dag ${fmt(minv(elapsedWindMean),1)}–${fmt(maxv(elapsedWindMean),1)} m/s`;
+      `Vindkast ${fmt(gustNow,1)} m/s · hittil i dag ${fmt(windMinToday,1)}–${fmt(windMaxToday,1)} m/s`;
+
+    $('windNowKmh').textContent = `${fmt(finite(windMean) ? windMean*3.6 : null,1)} km/t`;
+    $('windDirNowKmh').textContent = directionText;
+    $('windSpreadKmh').textContent =
+      `Vindkast ${fmt(finite(gustNow) ? gustNow*3.6 : null,1)} km/t · hittil i dag ${fmt(finite(windMinToday) ? windMinToday*3.6 : null,1)}–${fmt(finite(windMaxToday) ? windMaxToday*3.6 : null,1)} km/t`;
+
+    const pressureNow = mean(pressv);
+    const past12Idx = Math.max(0, idx - 12);
+    const pressurePast12 = mean(valuesAt(models,'pressure',past12Idx));
+    const pressureDelta12 = finite(pressureNow) && finite(pressurePast12) ? pressureNow - pressurePast12 : null;
+
+    $('pressureNow').textContent = `${fmt(pressureNow,0)} mbar`;
+    if(finite(pressureDelta12)){
+      let arrow, word;
+      if(Math.abs(pressureDelta12) < 0.1){
+        arrow = '→';
+        word = 'stabilt';
+      }else if(pressureDelta12 > 0){
+        arrow = '↑';
+        word = 'stigende';
+      }else{
+        arrow = '↓';
+        word = 'synkende';
+      }
+      $('pressureTrend').innerHTML = `<span class="trend-arrow">${arrow}</span> ${word}`;
+      const verb = pressureDelta12 > 0 ? 'steget' : pressureDelta12 < 0 ? 'falt' : 'endret';
+      $('pressureDetail').textContent =
+        `${verb} ${fmt(Math.abs(pressureDelta12),1)} mbar siste 12 t`;
+    }else{
+      $('pressureTrend').textContent = '–';
+      $('pressureDetail').textContent = '–';
+    }
 
     $('rhNow').textContent = `${fmt(mean(rv),0)} %`;
     $('rhNow').nextElementSibling.textContent =
       `i dag ${fmt(minv(todayRhMean),0)}–${fmt(maxv(todayRhMean),0)} %`;
-
-    $('modelCount').textContent = `${tv.length}`;
-    $('updateTime').textContent = 'sist lastet ' + new Intl.DateTimeFormat('nb-NO',{
-      timeZone:'Europe/Oslo',dateStyle:'short',timeStyle:'short'
-    }).format(new Date());
   }
 
   let loadInProgress = false;
@@ -724,9 +897,10 @@
       return;
     }
 
-    const [results, recentHistoryResult] = await Promise.all([
+    const [results, recentHistoryResult, localExtrasResult] = await Promise.all([
       Promise.allSettled(MODELS.map(fetchModel)),
-      fetchRecentHistory().then(value => ({ok:true,value})).catch(error => ({ok:false,error}))
+      fetchRecentHistory().then(value => ({ok:true,value})).catch(error => ({ok:false,error})),
+      fetchLocalExtras().then(value => ({ok:true,value})).catch(error => ({ok:false,error}))
     ]);
     const ok = [];
     const failed = [];
@@ -747,6 +921,7 @@
     const models = aligned.models;
 
     renderCurrent(times,models,recentHistoryResult.ok ? recentHistoryResult.value : null);
+    renderLocalExtras(localExtrasResult.ok ? localExtrasResult.value : null);
     renderModelChips(models,failed,times);
 
     destroyCharts();
@@ -756,6 +931,7 @@
       makeLine('windChart',times,models,'wind','m/s',0,null);
       makeDirection(times,models);
       makeLine('rhChart',times,models,'rh','%',0,100);
+      makeLine('pressureChart',times,models,'pressure','mbar');
     }catch(e){
       console.error(e);
       showError(`Dataene er lastet, men grafene kunne ikke tegnes: ${e.message}`);
@@ -765,7 +941,8 @@
 
     const suffix = failed.length ? ` · ${failed.length} modell${failed.length === 1 ? '' : 'er'} utilgjengelig` : '';
     const historySuffix = recentHistoryResult.ok ? '' : ' · nedbørshistorikk utilgjengelig';
-    setStatus(`Oppdatert med ${models.length} værmodeller${suffix}${historySuffix}`,'ok');
+    const localSuffix = localExtrasResult.ok ? '' : ' · sol/trykkdata utilgjengelig';
+    setStatus(`Oppdatert med ${models.length} værmodeller${suffix}${historySuffix}${localSuffix}`,'ok');
     finishLoad();
   }
 
@@ -773,7 +950,7 @@
   $('shareBtn').addEventListener('click', async () => {
     try{
       if(navigator.share){
-        await navigator.share({title:'Ålgård MultiModel',text:'Oppdatert multimodell-værvarsel for Ålgård',url:location.href});
+        await navigator.share({title:'Ålgård DidWell',text:'Oppdatert multimodell-værvarsel for Ålgård',url:location.href});
       }else{
         await navigator.clipboard.writeText(location.href);
         const old = $('shareBtn').textContent;
