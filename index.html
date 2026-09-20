@@ -1,40 +1,663 @@
-Ålgård MultiModel
-58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.1 · oppdateres automatisk når siden åpnes
-Oppdater
-Del
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1220">
+  <meta name="description" content="Automatisk oppdatert MultiModel-værvisualisering for Ålgård, Rogaland.">
+  <title>Ålgård MultiModel</title>
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#08111f;
+      --bg2:#0b1627;
+      --panel:#101d30;
+      --panel2:#14243a;
+      --line:#263a58;
+      --text:#f5f8fc;
+      --muted:#9fb0c8;
+      --good:#5bd6ad;
+      --mid:#ffd166;
+      --low:#ff7d8a;
+      --accent:#78baff;
+      --shadow:0 16px 40px rgba(0,0,0,.22);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#07101c 0%,#0b1628 48%,#08111f 100%);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased;
+    }
+    a{color:#92c9ff}
+    .wrap{width:min(1440px,100%);margin:auto;padding:18px}
+    header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:6px 0 14px}
+    h1{font-size:clamp(28px,5vw,48px);line-height:1.02;letter-spacing:-.035em;margin:0}
+    .sub{color:var(--muted);font-size:14px;margin-top:8px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    button{
+      appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);
+      border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer
+    }
+    button:hover{filter:brightness(1.08)}
+    .status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;margin:0 0 14px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--mid);flex:0 0 auto}
+    .dot.ok{background:var(--good)}
+    .dot.err{background:var(--low)}
+    .error{
+      display:none;background:rgba(255,125,138,.09);border:1px solid rgba(255,125,138,.48);
+      color:#ffd6da;border-radius:14px;padding:12px 14px;margin:0 0 14px;line-height:1.45
+    }
+    .cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:12px}
+    .card,.panel,.day{
+      background:rgba(16,29,48,.95);border:1px solid var(--line);
+      border-radius:var(--radius);box-shadow:var(--shadow)
+    }
+    .card{padding:15px;min-width:0}
+    .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.075em}
+    .value{font-size:27px;font-weight:780;margin-top:5px;white-space:nowrap}
+    .detail{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
+    .section-title{font-size:17px;font-weight:750;margin:16px 0 8px}
+    .days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 12px}
+    .day{padding:12px;min-height:142px}
+    .date{font-weight:760}
+    .temps{font-size:22px;font-weight:780;margin-top:8px}
+    .small{font-size:12px;color:var(--muted);line-height:1.52;margin-top:6px}
+    .confidence{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:800;margin-top:8px}
+    .confidence.high{background:rgba(91,214,173,.14);color:#91edce}
+    .confidence.medium{background:rgba(255,209,102,.14);color:#ffe19b}
+    .confidence.low{background:rgba(255,125,138,.14);color:#ffb0b8}
+    .models{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
+    .model{
+      display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);
+      background:rgba(16,29,48,.95);padding:7px 9px;border-radius:999px;font-size:12px;color:#dbe5f2
+    }
+    .model.failed{opacity:.55}
+    .swatch{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    .panel{padding:14px;overflow:hidden}
+    .panel h2{font-size:17px;margin:0 0 4px}
+    .panel p{font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.45}
+    .chart-wrap{height:290px;position:relative}
+    .note{
+      background:rgba(20,36,58,.72);border:1px solid var(--line);border-radius:14px;
+      padding:12px 14px;color:var(--muted);font-size:12px;line-height:1.58;margin:14px 0
+    }
+    footer{color:var(--muted);font-size:12px;line-height:1.6;padding:4px 2px 30px}
+    @media(max-width:960px){
+      .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .cards .card:last-child{grid-column:span 2}
+      .days{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:640px){
+      .wrap{padding:12px}
+      header{display:block}
+      .actions{justify-content:flex-start;margin-top:12px}
+      .cards{grid-template-columns:1fr 1fr;gap:8px}
+      .card{padding:12px}
+      .value{font-size:23px}
+      .days{grid-template-columns:1fr 1fr}
+      .day{min-height:128px}
+      .panel{padding:11px}
+      .chart-wrap{height:265px}
+      .sub{font-size:13px;line-height:1.4}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Ålgård MultiModel</h1>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.1 · oppdateres automatisk når siden åpnes</div>
+    </div>
+    <div class="actions">
+      <button id="refreshBtn" type="button">Oppdater</button>
+      <button id="shareBtn" type="button">Del</button>
+    </div>
+  </header>
 
-Henter siste modelldata …
-TEMPERATUR NÅ
-–
-–
-NEDBØR NÅ
-–
-–
-VIND NÅ
-–
-–
-LUFTFUKTIGHET
-–
-modellgjennomsnitt
-AKTIVE MODELLER NÅ
-–
-–
-7-dagers oversikt
-Modeller
-Temperatur
-Tynne linjer er enkeltmodeller. Hvit linje er modellgjennomsnitt. Det transparente feltet viser min–maks-spredningen mellom tilgjengelige modeller.
+  <div class="status">
+    <span id="statusDot" class="dot"></span>
+    <span id="statusText">Henter siste modelldata …</span>
+  </div>
+  <div id="errorBox" class="error"></div>
 
-Nedbør
-Timesnedbør fra hver modell. Søylene viser modellgjennomsnittet. Uenighet mellom linjene betyr usikkerhet i timing eller intensitet.
+  <section class="cards">
+    <div class="card">
+      <div class="label">Temperatur nå</div>
+      <div id="tempNow" class="value">–</div>
+      <div id="tempSpread" class="detail">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Nedbør nå</div>
+      <div id="precipNow" class="value">–</div>
+      <div id="precipAgreement" class="detail">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Vind nå</div>
+      <div id="windNow" class="value">–</div>
+      <div id="windSpread" class="detail">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Luftfuktighet</div>
+      <div id="rhNow" class="value">–</div>
+      <div class="detail">modellgjennomsnitt</div>
+    </div>
+    <div class="card">
+      <div class="label">Aktive modeller nå</div>
+      <div id="modelCount" class="value">–</div>
+      <div id="updateTime" class="detail">–</div>
+    </div>
+  </section>
 
-Vindstyrke
-Vind 10 meter over bakken i m/s. Hvit linje er modellgjennomsnitt.
+  <div class="section-title">7-dagers oversikt</div>
+  <section id="days" class="days"></section>
 
-Vindretning
-0°/360° = nord, 90° = øst, 180° = sør og 270° = vest. Vindretning er mindre meningsfull ved svært svak vind.
+  <div class="section-title">Modeller</div>
+  <div id="models" class="models"></div>
 
-Relativ luftfuktighet
-Prosent relativ luftfuktighet fra tilgjengelige modeller.
+  <section class="grid">
+    <div class="panel">
+      <h2>Temperatur</h2>
+      <p>Tynne linjer er enkeltmodeller. Hvit linje er modellgjennomsnitt. Det transparente feltet viser min–maks-spredningen mellom tilgjengelige modeller.</p>
+      <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Nedbør</h2>
+      <p>Timesnedbør fra hver modell. Søylene viser modellgjennomsnittet. Uenighet mellom linjene betyr usikkerhet i timing eller intensitet.</p>
+      <div class="chart-wrap"><canvas id="precipChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Vindstyrke</h2>
+      <p>Vind 10 meter over bakken i m/s. Hvit linje er modellgjennomsnitt.</p>
+      <div class="chart-wrap"><canvas id="windChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Vindretning</h2>
+      <p>0°/360° = nord, 90° = øst, 180° = sør og 270° = vest. Vindretning er mindre meningsfull ved svært svak vind.</p>
+      <div class="chart-wrap"><canvas id="dirChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Relativ luftfuktighet</h2>
+      <p>Prosent relativ luftfuktighet fra tilgjengelige modeller.</p>
+      <div class="chart-wrap"><canvas id="rhChart"></canvas></div>
+    </div>
+  </section>
 
-Om «enighet»: Høy / middels / lav er en lokal indikator beregnet fra modellspredning i temperatur og vind, uenighet om nedbør og hvor mange modeller som fortsatt dekker tidsrommet. Den er ikke en offisiell sannsynlighetsprognose. Lokale høyoppløselige modeller har kortere prognosehorisont enn globale modeller, og forsvinner derfor fra beregningen når deres egne data tar slutt.
-Data leveres via Open-Meteo. Modellkilder: ECMWF, NOAA/NCEP, DWD, Environment and Climate Change Canada, Météo-France, MET Norway, DMI, UK Met Office og KNMI. Denne siden bruker råmodellene der det er praktisk mulig, slik at korttidsmodellene ikke kunstig forlenges med en annen leverandørs modell.
+  <div class="note">
+    <strong>Om «enighet»:</strong> Høy / middels / lav er en lokal indikator beregnet fra modellspredning i temperatur og vind, uenighet om nedbør og hvor mange modeller som fortsatt dekker tidsrommet. Den er ikke en offisiell sannsynlighetsprognose.
+    Lokale høyoppløselige modeller har kortere prognosehorisont enn globale modeller, og forsvinner derfor fra beregningen når deres egne data tar slutt.
+  </div>
+
+  <footer>
+    Data leveres via <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>.
+    Modellkilder: ECMWF, NOAA/NCEP, DWD, Environment and Climate Change Canada, Météo-France, MET Norway, DMI, UK Met Office og KNMI.
+    Denne siden bruker råmodellene der det er praktisk mulig, slik at korttidsmodellene ikke kunstig forlenges med en annen leverandørs modell.
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const LAT = '58.76';
+  const LON = '5.85';
+  const ELEVATION = '116';
+  const API = 'https://api.open-meteo.com/v1/forecast';
+
+  const MODELS = [
+    {id:'ecmwf_ifs', name:'ECMWF IFS HRES 9 km', short:'ECMWF'},
+    {id:'ncep_gfs_global', name:'NOAA GFS Global', short:'GFS'},
+    {id:'icon_eu', name:'DWD ICON-EU', short:'ICON-EU'},
+    {id:'cmc_gem_gdps', name:'GEM Global (GDPS)', short:'GEM'},
+    {id:'meteofrance_arpege_europe', name:'Météo-France ARPEGE Europe', short:'ARPEGE'},
+    {id:'metno_nordic', name:'MET Norway Nordic', short:'MET Nordic'},
+    {id:'dmi_harmonie_arome_europe', name:'DMI HARMONIE-AROME Europe', short:'DMI HARMONIE'},
+    {id:'ukmo_global_deterministic_10km', name:'UK Met Office Global 10 km', short:'UKMO'},
+    {id:'knmi_harmonie_arome_europe', name:'KNMI HARMONIE-AROME Europe', short:'KNMI HARMONIE'}
+  ];
+
+  const COLORS = ['#72b7ff','#ff9f6e','#a58cff','#5cd3aa','#ffd166','#f783ac','#9dd46f','#6ed0e0','#f0a7ff'];
+  const charts = [];
+
+  const $ = id => document.getElementById(id);
+  const finite = v => Number.isFinite(v);
+  const clean = a => a.filter(finite);
+  const mean = a => {
+    const b = clean(a);
+    return b.length ? b.reduce((x,y) => x+y, 0) / b.length : null;
+  };
+  const minv = a => {
+    const b = clean(a);
+    return b.length ? Math.min(...b) : null;
+  };
+  const maxv = a => {
+    const b = clean(a);
+    return b.length ? Math.max(...b) : null;
+  };
+  const range = a => {
+    const lo = minv(a), hi = maxv(a);
+    return lo === null || hi === null ? null : hi - lo;
+  };
+  const fmt = (n,d=1) => finite(n) ? n.toFixed(d).replace('.',',') : '–';
+
+  function rgba(hex, alpha){
+    const h = hex.replace('#','');
+    const r = parseInt(h.slice(0,2),16);
+    const g = parseInt(h.slice(2,4),16);
+    const b = parseInt(h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function setStatus(text, type=''){
+    $('statusText').textContent = text;
+    $('statusDot').className = 'dot' + (type ? ' ' + type : '');
+  }
+
+  function showError(text){
+    $('errorBox').style.display = 'block';
+    $('errorBox').textContent = text;
+    setStatus('Oppdateringen feilet','err');
+  }
+
+  function osloHourKey(){
+    const parts = new Intl.DateTimeFormat('sv-SE',{
+      timeZone:'Europe/Oslo',year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',hour12:false
+    }).formatToParts(new Date());
+    const get = t => parts.find(p => p.type === t)?.value;
+    return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}`;
+  }
+
+  function displayTime(t){
+    if(!t) return '–';
+    const [date,time] = t.split('T');
+    const d = new Date(date + 'T12:00:00Z');
+    const w = new Intl.DateTimeFormat('nb-NO',{weekday:'short',timeZone:'UTC'}).format(d);
+    return `${w} ${time.slice(0,2)}`;
+  }
+
+  function displayDay(date){
+    const d = new Date(date + 'T12:00:00Z');
+    return new Intl.DateTimeFormat('nb-NO',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}).format(d);
+  }
+
+  function keyFor(hourly, base, modelId){
+    if(Array.isArray(hourly?.[base])) return base;
+    const exact = `${base}_${modelId}`;
+    if(Array.isArray(hourly?.[exact])) return exact;
+    return Object.keys(hourly || {}).find(k => k.startsWith(base + '_') && Array.isArray(hourly[k])) || null;
+  }
+
+  async function fetchModel(spec){
+    const params = new URLSearchParams({
+      latitude: LAT,
+      longitude: LON,
+      elevation: ELEVATION,
+      timezone: 'Europe/Oslo',
+      forecast_days: '7',
+      wind_speed_unit: 'ms',
+      hourly: 'temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m',
+      models: spec.id
+    });
+
+    const res = await fetch(`${API}?${params.toString()}`, {cache:'no-store'});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const hourly = data.hourly || {};
+
+    const tempKey = keyFor(hourly,'temperature_2m',spec.id);
+    const rhKey = keyFor(hourly,'relative_humidity_2m',spec.id);
+    const precipKey = keyFor(hourly,'precipitation',spec.id);
+    const windKey = keyFor(hourly,'wind_speed_10m',spec.id);
+    const dirKey = keyFor(hourly,'wind_direction_10m',spec.id);
+
+    if(!Array.isArray(hourly.time) || !tempKey) throw new Error('mangler timesdata');
+
+    return {
+      ...spec,
+      times: hourly.time,
+      temp: hourly[tempKey] || [],
+      rh: rhKey ? hourly[rhKey] : [],
+      precip: precipKey ? hourly[precipKey] : [],
+      wind: windKey ? hourly[windKey] : [],
+      dir: dirKey ? hourly[dirKey] : []
+    };
+  }
+
+  function alignModels(models){
+    const master = [...new Set(models.flatMap(m => m.times || []))].sort();
+    return {
+      times: master,
+      models: models.map(m => {
+        const pos = new Map(m.times.map((t,i) => [t,i]));
+        const aligned = field => master.map(t => {
+          const i = pos.get(t);
+          const v = i === undefined ? null : m[field][i];
+          return finite(v) ? v : null;
+        });
+        return {...m, temp:aligned('temp'), rh:aligned('rh'), precip:aligned('precip'), wind:aligned('wind'), dir:aligned('dir')};
+      })
+    };
+  }
+
+  function valuesAt(models, field, idx){
+    return models.map(m => m[field][idx]).filter(finite);
+  }
+
+  function circularMean(degrees){
+    const a = clean(degrees);
+    if(!a.length) return null;
+    let x=0,y=0;
+    for(const d of a){
+      const r = d * Math.PI / 180;
+      x += Math.cos(r);
+      y += Math.sin(r);
+    }
+    return (Math.atan2(y/a.length,x/a.length) * 180 / Math.PI + 360) % 360;
+  }
+
+  function lastAvailableIndex(m){
+    for(let i=m.temp.length-1;i>=0;i--){
+      if(finite(m.temp[i])) return i;
+    }
+    return -1;
+  }
+
+  function modelColor(i,alpha=1){
+    return alpha === 1 ? COLORS[i % COLORS.length] : rgba(COLORS[i % COLORS.length], alpha);
+  }
+
+  function renderModelChips(models, failed, times){
+    const root = $('models');
+    root.innerHTML = '';
+
+    models.forEach((m,i) => {
+      const end = lastAvailableIndex(m);
+      const chip = document.createElement('div');
+      chip.className = 'model';
+      chip.innerHTML = `<span class="swatch" style="background:${modelColor(i)}"></span>${m.short} · til ${end >= 0 ? displayTime(times[end]) : '–'}`;
+      chip.title = m.name;
+      root.appendChild(chip);
+    });
+
+    failed.forEach(f => {
+      const chip = document.createElement('div');
+      chip.className = 'model failed';
+      chip.textContent = `${f.spec.short} · utilgjengelig`;
+      chip.title = `${f.spec.name}: ${f.error}`;
+      root.appendChild(chip);
+    });
+  }
+
+  function confidence(models,start,end){
+    const tempRanges=[], windRanges=[], precipDisagreement=[], counts=[];
+    for(let i=start;i<end;i++){
+      const tv = valuesAt(models,'temp',i);
+      const wv = valuesAt(models,'wind',i);
+      const pv = valuesAt(models,'precip',i);
+      if(tv.length >= 2) tempRanges.push(range(tv));
+      if(wv.length >= 2) windRanges.push(range(wv));
+      if(pv.length >= 2){
+        const wet = pv.filter(x => x >= 0.2).length / pv.length;
+        precipDisagreement.push(Math.min(wet,1-wet)*2);
+      }
+      counts.push(tv.length);
+    }
+    const t = mean(tempRanges) ?? 9;
+    const w = mean(windRanges) ?? 9;
+    const p = mean(precipDisagreement) ?? 1;
+    const c = mean(counts) ?? 0;
+
+    let score = t*0.50 + w*0.30 + p*2.0;
+    if(c < 7) score += 0.35;
+    if(c < 5) score += 0.55;
+    if(c < 3) score += 1.0;
+
+    if(score < 1.5) return ['Høy','high'];
+    if(score < 2.9) return ['Middels','medium'];
+    return ['Lav','low'];
+  }
+
+  function renderDays(times,models){
+    const root = $('days');
+    root.innerHTML = '';
+    const byDay = new Map();
+    times.forEach((t,i) => {
+      const d = t.slice(0,10);
+      if(!byDay.has(d)) byDay.set(d,[]);
+      byDay.get(d).push(i);
+    });
+
+    [...byDay.entries()].slice(0,7).forEach(([date,idxs]) => {
+      const tAvg = idxs.map(i => mean(valuesAt(models,'temp',i))).filter(finite);
+      const pAvg = idxs.map(i => mean(valuesAt(models,'precip',i))).filter(finite);
+      const wAvg = idxs.map(i => mean(valuesAt(models,'wind',i))).filter(finite);
+      const counts = idxs.map(i => valuesAt(models,'temp',i).length);
+      const [conf,cls] = confidence(models,idxs[0],idxs[idxs.length-1]+1);
+
+      const precipSum = pAvg.length ? pAvg.reduce((a,b)=>a+b,0) : null;
+      const card = document.createElement('div');
+      card.className = 'day';
+      card.innerHTML =
+        `<div class="date">${displayDay(date)}</div>` +
+        `<div class="temps">${fmt(minv(tAvg),0)}–${fmt(maxv(tAvg),0)} °C</div>` +
+        `<div class="small">Nedbør: ${fmt(precipSum,1)} mm<br>Maks middelvind: ${fmt(maxv(wAvg),1)} m/s<br>Modeller: ${fmt(mean(counts),0)}</div>` +
+        `<span class="confidence ${cls}">${conf} enighet</span>`;
+      root.appendChild(card);
+    });
+  }
+
+  function destroyCharts(){
+    while(charts.length) charts.pop().destroy();
+  }
+
+  function tickLabel(t){
+    if(!t) return '';
+    const [d,h] = t.split('T');
+    const dt = new Date(d + 'T12:00:00Z');
+    const wd = new Intl.DateTimeFormat('nb-NO',{weekday:'short',timeZone:'UTC'}).format(dt);
+    return `${wd} ${h.slice(0,2)}`;
+  }
+
+  function baseOptions(times,yTitle,minY=null,maxY=null){
+    return {
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title: items => items.length ? items[0].label.replace('T',' ') : ''
+          }
+        }
+      },
+      scales:{
+        x:{
+          ticks:{
+            color:'#91a4bd',
+            maxRotation:0,
+            autoSkip:false,
+            font:{size:10},
+            callback:(value,index) => index % 12 === 0 ? tickLabel(times[index]) : ''
+          },
+          grid:{color:'rgba(74,96,127,.14)'}
+        },
+        y:{
+          min:minY,max:maxY,
+          ticks:{color:'#9fb0c8'},
+          title:{display:true,text:yTitle,color:'#9fb0c8'},
+          grid:{color:'rgba(74,96,127,.22)'}
+        }
+      }
+    };
+  }
+
+  function datasetsForLine(models,field,times){
+    const lo=[], hi=[], avg=[];
+    for(let i=0;i<times.length;i++){
+      const v = valuesAt(models,field,i);
+      lo.push(minv(v)); hi.push(maxv(v)); avg.push(mean(v));
+    }
+    const ds = [
+      {label:'Minimum',data:lo,borderColor:'rgba(120,186,255,.16)',backgroundColor:'rgba(120,186,255,.11)',pointRadius:0,borderWidth:1,spanGaps:true},
+      {label:'Maksimum',data:hi,borderColor:'rgba(120,186,255,.16)',backgroundColor:'rgba(120,186,255,.11)',pointRadius:0,borderWidth:1,fill:'-1',spanGaps:true}
+    ];
+    models.forEach((m,i) => ds.push({
+      label:m.name,data:m[field],borderColor:modelColor(i,.52),
+      pointRadius:0,borderWidth:1.05,tension:.14,spanGaps:false
+    }));
+    ds.push({
+      label:'Modellgjennomsnitt',data:avg,borderColor:'#ffffff',
+      pointRadius:0,borderWidth:2.5,tension:.14,spanGaps:true
+    });
+    return ds;
+  }
+
+  function makeLine(id,times,models,field,unit,minY=null,maxY=null){
+    const chart = new Chart($(id),{
+      type:'line',
+      data:{labels:times,datasets:datasetsForLine(models,field,times)},
+      options:baseOptions(times,unit,minY,maxY)
+    });
+    charts.push(chart);
+  }
+
+  function makePrecip(times,models){
+    const avg = times.map((_,i) => mean(valuesAt(models,'precip',i)));
+    const ds = models.map((m,i) => ({
+      type:'line',label:m.name,data:m.precip,borderColor:modelColor(i,.42),
+      pointRadius:0,borderWidth:1,tension:.08,spanGaps:false
+    }));
+    ds.push({
+      type:'bar',label:'Modellgjennomsnitt',data:avg,
+      backgroundColor:'rgba(120,186,255,.68)',borderWidth:0,barPercentage:1,categoryPercentage:1
+    });
+    const chart = new Chart($('precipChart'),{
+      data:{labels:times,datasets:ds},
+      options:baseOptions(times,'mm/h',0,null)
+    });
+    charts.push(chart);
+  }
+
+  function makeDirection(times,models){
+    const avg = times.map((_,i) => circularMean(valuesAt(models,'dir',i)));
+    const ds = models.map((m,i) => ({
+      label:m.name,data:m.dir,showLine:false,
+      borderColor:modelColor(i,.35),backgroundColor:modelColor(i,.80),
+      pointRadius:1.7,pointHoverRadius:4,spanGaps:false
+    }));
+    ds.push({
+      label:'Sirkulært gjennomsnitt',data:avg,borderColor:'#ffffff',
+      pointRadius:0,borderWidth:2,tension:.08,spanGaps:true
+    });
+    const options = baseOptions(times,'grader',0,360);
+    options.scales.y.ticks.stepSize = 90;
+    options.scales.y.ticks.callback = v => ({0:'N',90:'Ø',180:'S',270:'V',360:'N'}[v] ?? `${v}°`);
+    const chart = new Chart($('dirChart'),{
+      type:'line',data:{labels:times,datasets:ds},options
+    });
+    charts.push(chart);
+  }
+
+  function renderCurrent(times,models){
+    const key = osloHourKey();
+    let idx = times.findIndex(t => t.startsWith(key));
+    if(idx < 0) idx = 0;
+
+    const tv = valuesAt(models,'temp',idx);
+    const pv = valuesAt(models,'precip',idx);
+    const wv = valuesAt(models,'wind',idx);
+    const rv = valuesAt(models,'rh',idx);
+
+    $('tempNow').textContent = `${fmt(mean(tv),1)} °C`;
+    $('tempSpread').textContent = tv.length >= 2 ? `spredning ${fmt(range(tv),1)} °C · ${fmt(minv(tv),1)}–${fmt(maxv(tv),1)}` : 'for få modeller til spredning';
+
+    $('precipNow').textContent = `${fmt(mean(pv),2)} mm/h`;
+    const wetPct = pv.length ? 100 * pv.filter(x => x >= .2).length / pv.length : null;
+    $('precipAgreement').textContent = finite(wetPct) ? `${fmt(wetPct,0)} % av modellene ≥ 0,2 mm/h` : '–';
+
+    $('windNow').textContent = `${fmt(mean(wv),1)} m/s`;
+    $('windSpread').textContent = wv.length >= 2 ? `spredning ${fmt(range(wv),1)} m/s` : 'for få modeller til spredning';
+
+    $('rhNow').textContent = `${fmt(mean(rv),0)} %`;
+    $('modelCount').textContent = `${tv.length}`;
+    $('updateTime').textContent = 'sist lastet ' + new Intl.DateTimeFormat('nb-NO',{
+      timeZone:'Europe/Oslo',dateStyle:'short',timeStyle:'short'
+    }).format(new Date());
+  }
+
+  async function load(){
+    $('errorBox').style.display = 'none';
+    setStatus('Henter siste modelldata …');
+
+    if(typeof Chart === 'undefined'){
+      showError('Grafbiblioteket kunne ikke lastes. Kontroller nettforbindelsen og last siden på nytt.');
+      return;
+    }
+
+    const results = await Promise.allSettled(MODELS.map(fetchModel));
+    const ok = [];
+    const failed = [];
+
+    results.forEach((r,i) => {
+      if(r.status === 'fulfilled') ok.push(r.value);
+      else failed.push({spec:MODELS[i],error:r.reason?.message || 'ukjent feil'});
+    });
+
+    if(ok.length < 2){
+      showError(`Bare ${ok.length} modell kunne lastes. MultiModel-visningen trenger minst to. Prøv igjen senere.`);
+      return;
+    }
+
+    const aligned = alignModels(ok);
+    const times = aligned.times;
+    const models = aligned.models;
+
+    renderCurrent(times,models);
+    renderDays(times,models);
+    renderModelChips(models,failed,times);
+
+    destroyCharts();
+    try{
+      makeLine('tempChart',times,models,'temp','°C');
+      makePrecip(times,models);
+      makeLine('windChart',times,models,'wind','m/s',0,null);
+      makeDirection(times,models);
+      makeLine('rhChart',times,models,'rh','%',0,100);
+    }catch(e){
+      console.error(e);
+      showError(`Dataene er lastet, men grafene kunne ikke tegnes: ${e.message}`);
+      return;
+    }
+
+    const suffix = failed.length ? ` · ${failed.length} modell${failed.length === 1 ? '' : 'er'} utilgjengelig` : '';
+    setStatus(`Oppdatert med ${models.length} værmodeller${suffix}`,'ok');
+  }
+
+  $('refreshBtn').addEventListener('click', load);
+  $('shareBtn').addEventListener('click', async () => {
+    try{
+      if(navigator.share){
+        await navigator.share({title:'Ålgård MultiModel',text:'Oppdatert multimodell-værvarsel for Ålgård',url:location.href});
+      }else{
+        await navigator.clipboard.writeText(location.href);
+        const old = $('shareBtn').textContent;
+        $('shareBtn').textContent = 'Lenke kopiert';
+        setTimeout(() => $('shareBtn').textContent = old, 1600);
+      }
+    }catch(_){}
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
