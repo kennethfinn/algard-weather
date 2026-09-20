@@ -52,21 +52,22 @@
       display:none;background:rgba(255,125,138,.09);border:1px solid rgba(255,125,138,.48);
       color:#ffd6da;border-radius:14px;padding:12px 14px;margin:0 0 14px;line-height:1.45
     }
-    .cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:12px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;margin-bottom:14px}
     .card,.panel,.day{
       background:rgba(16,29,48,.95);border:1px solid var(--line);
       border-radius:var(--radius);box-shadow:var(--shadow)
     }
-    .card{padding:15px;min-width:0}
+    .card{padding:16px;min-width:0}
     .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.075em}
-    .value{font-size:27px;font-weight:780;margin-top:5px;white-space:nowrap}
+    .value{font-size:clamp(22px,2.1vw,27px);font-weight:780;margin-top:5px;white-space:nowrap;line-height:1.05}
     .wind-value-line{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:5px}
     .wind-value-line .value{margin-top:0}
-    .temp-value-grid,.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:0}
+    .temp-value-grid,.metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:0}
     .temp-value-grid .metric,.metric-grid .metric{min-width:0}
     .temp-value-grid .metric .label,.metric-grid .metric .label{white-space:normal;line-height:1.25}
+    .temp-value-grid .metric .value,.metric-grid .metric .value{font-size:clamp(19px,1.75vw,27px)}
     .temp-value-grid .metric .value,.metric-grid .metric .value{margin-top:5px}
-    .detail{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
+    .detail{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
     .section-title{font-size:17px;font-weight:750;margin:16px 0 8px}
     .days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 12px}
     .day{padding:12px;min-height:142px}
@@ -95,22 +96,24 @@
       padding:12px 14px;color:var(--muted);font-size:12px;line-height:1.58;margin:14px 0
     }
     footer{color:var(--muted);font-size:12px;line-height:1.6;padding:4px 2px 30px}
+    @media(max-width:1200px){
+      .cards{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+    }
     @media(max-width:960px){
-      .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .cards .card:last-child{grid-column:span 2}
+      .cards{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
       .days{grid-template-columns:repeat(4,minmax(0,1fr))}
     }
     @media(max-width:640px){
       .wrap{padding:12px}
       header{display:block}
       .actions{justify-content:flex-start;margin-top:12px}
-      .cards{grid-template-columns:1fr 1fr;gap:8px}
+      .cards{grid-template-columns:1fr;gap:10px}
       .card{padding:12px}
       .value{font-size:23px}
       .wind-value-line{gap:8px}
       .wind-value-line .value{font-size:21px}
       .temp-value-grid,.metric-grid{gap:10px}
-      .temp-value-grid .metric .value,.metric-grid .metric .value{font-size:21px}
+      .temp-value-grid .metric .value,.metric-grid .metric .value{font-size:20px}
       .temp-value-grid .metric .label,.metric-grid .metric .label{font-size:10px}
       .days{grid-template-columns:1fr 1fr}
       .day{min-height:128px}
@@ -125,7 +128,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.13 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.14 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
