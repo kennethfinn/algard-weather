@@ -52,7 +52,7 @@
       -webkit-font-smoothing:antialiased;
     }
     a{color:#92c9ff}
-    .wrap{width:min(1440px,100%);margin:auto;padding:18px}
+    .wrap{width:100%;margin:auto;padding:18px}
     header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:6px 0 14px}
     h1{font-size:clamp(28px,5vw,48px);line-height:1.02;letter-spacing:-.035em;margin:0}
     .sub{color:var(--muted);font-size:14px;margin-top:8px}
@@ -149,8 +149,8 @@
     h1{font-size:clamp(28px,5vw,48px);line-height:1.02;letter-spacing:-.035em;margin:0}
     .sub{margin-top:8px;line-height:1.5;max-width:640px}
     .status{line-height:1.5;margin-bottom:16px}
-    .cards{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin-bottom:20px}
-    .card{flex:0 1 300px;width:300px;max-width:100%;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.12);background:rgba(16,29,48,.95);border-color:#2b3e57}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-items:stretch;gap:10px;margin-bottom:20px}
+    .card{min-width:0;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.12);background:rgba(16,29,48,.95);border-color:#2b3e57}
     .temp-value-grid,.metric-grid{gap:12px}
     .metric{text-align:center}
     .metric + .metric{border-left:1px solid rgba(159,176,200,.16);padding-left:12px}
@@ -180,7 +180,6 @@
       header{display:flex;flex-wrap:wrap;gap:10px}
       .sub{font-size:12px}
       .actions{justify-content:flex-start;margin-top:0}
-      .card{flex-grow:0}
       .panel{padding:14px 12px}
     }
   </style>
@@ -190,7 +189,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.17 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.18 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
