@@ -191,7 +191,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.23 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.24 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -941,7 +941,12 @@
 
     $('precipNow').textContent = `${fmt(mean(pv),2)} mm/h`;
 
-    let todayPrecip = null;
+    const forecastTodayValues = todayIdx
+      .map(i => mean(valuesAt(models,'precip',i)))
+      .filter(finite);
+    const forecastTodayPrecip = forecastTodayValues.length
+      ? forecastTodayValues.reduce((sum,value) => sum + value,0)
+      : null;
     let precip24h = null;
     let precip30d = null;
     if(recentHistory && Array.isArray(recentHistory.time) && Array.isArray(recentHistory.precipitation)){
@@ -954,13 +959,11 @@
       precip30d = last720.length ? last720.reduce((s,x) => s + x.p, 0) : null;
       const last24 = hist.slice(-24);
       precip24h = last24.length ? last24.reduce((s,x) => s + x.p, 0) : null;
-      const todayRows = hist.filter(x => x.t.startsWith(today));
-      todayPrecip = todayRows.length ? todayRows.reduce((s,x) => s + x.p, 0) : 0;
     }
 
     $('precip24h').textContent = `${fmt(precip24h,1)} mm`;
     $('precipAgreement').textContent =
-      `i dag hittil ${fmt(todayPrecip,1)} mm · siste 30 døgn ${fmt(precip30d,1)} mm`;
+      `varslet i dag ${fmt(forecastTodayPrecip,1)} mm · siste 30 døgn ${fmt(precip30d,1)} mm`;
 
     const direction = circularMean(dv);
     const directionText = `${cardinal(direction)} ${fmt(direction,0)}°`;
@@ -1027,7 +1030,7 @@
     selectedDetails.forEach(el => {
       const parts = el.textContent.split(' · ');
       const rows = parts.map(part => {
-        const match = part.match(/^(i dag hittil|siste 30 døgn|hittil i dag|i dag|duggpunkt|vindkast|dagslys|soltimer) (.*)$/i);
+        const match = part.match(/^(varslet i dag|siste 30 døgn|hittil i dag|i dag|duggpunkt|vindkast|dagslys|soltimer) (.*)$/i);
         if(!match) return document.createTextNode(part);
         const row = document.createElement('div');
         row.className = 'detail-row';
@@ -1108,7 +1111,7 @@
     const suffix = failed.length ? ` · ${failed.length} modell${failed.length === 1 ? '' : 'er'} utilgjengelig` : '';
     const historySuffix = recentHistoryResult.ok ? '' : ' · nedbørshistorikk utilgjengelig';
     const localSuffix = localExtrasResult.ok ? '' : ' · sol/trykkdata utilgjengelig';
-    setStatus(`Oppdatert med ${models.length} værmodeller${suffix}${historySuffix}${localSuffix}`,'ok');
+    setStatus(`Oppdatert med ${models.length} værmodeller · Trykk på temperatur- eller vindboksen for å endre enhet${suffix}${historySuffix}${localSuffix}`,'ok');
     finishLoad();
   }
 
