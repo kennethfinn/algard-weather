@@ -197,7 +197,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.26 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.27 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -218,6 +218,45 @@
       <div id="weatherNow" class="value">–</div>
       <div id="weatherDetail" class="detail">–</div>
     </div>
+    <div class="card" id="temperatureCard" role="button" tabindex="0" aria-label="Temperatur i Celsius. Bytt til Fahrenheit" title="Trykk for å bytte mellom °C og °F">
+      <div class="temp-value-grid">
+        <div class="metric">
+          <div class="label">Temperatur nå</div>
+          <div id="tempNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Opplevd temperatur</div>
+          <div id="apparentNow" class="value">–</div>
+        </div>
+      </div>
+      <div id="tempSpread" class="detail">–</div>
+    </div>
+    <div class="card" id="windCard" role="button" tabindex="0" aria-label="Vindstyrke i meter per sekund. Bytt til kilometer i timen" title="Trykk for å bytte mellom m/s og km/t">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Vind nå</div>
+          <div id="windNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Vindretning</div>
+          <div id="windDirNow" class="value">–</div>
+        </div>
+      </div>
+      <div id="windSpread" class="detail">–</div>
+    </div>
+    <div class="card">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Nedbør nå</div>
+          <div id="precipNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Hittil i dag</div>
+          <div id="precipToday" class="value">–</div>
+        </div>
+      </div>
+      <div id="precipAgreement" class="detail">–</div>
+    </div>
     <div class="card">
       <div class="label">Neste nedbør</div>
       <div id="nextPrecip" class="value">–</div>
@@ -236,62 +275,10 @@
       </div>
       <div id="localRisk" class="detail">beregnede lokale indikatorer</div>
     </div>
-    <div class="card" id="temperatureCard" role="button" tabindex="0" aria-label="Temperatur i Celsius. Bytt til Fahrenheit" title="Trykk for å bytte mellom °C og °F">
-      <div class="temp-value-grid">
-        <div class="metric">
-          <div class="label">Temperatur nå</div>
-          <div id="tempNow" class="value">–</div>
-        </div>
-        <div class="metric">
-          <div class="label">Opplevd temperatur</div>
-          <div id="apparentNow" class="value">–</div>
-        </div>
-      </div>
-      <div id="tempSpread" class="detail">–</div>
-    </div>
-    <div class="card">
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="label">Nedbør nå</div>
-          <div id="precipNow" class="value">–</div>
-        </div>
-        <div class="metric">
-          <div class="label">Hittil i dag</div>
-          <div id="precipToday" class="value">–</div>
-        </div>
-      </div>
-      <div id="precipAgreement" class="detail">–</div>
-    </div>
-    <div class="card" id="windCard" role="button" tabindex="0" aria-label="Vindstyrke i meter per sekund. Bytt til kilometer i timen" title="Trykk for å bytte mellom m/s og km/t">
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="label">Vind nå</div>
-          <div id="windNow" class="value">–</div>
-        </div>
-        <div class="metric">
-          <div class="label">Vindretning</div>
-          <div id="windDirNow" class="value">–</div>
-        </div>
-      </div>
-      <div id="windSpread" class="detail">–</div>
-    </div>
     <div class="card">
       <div class="label">Luftfuktighet</div>
       <div id="rhNow" class="value">–</div>
       <div class="detail">modellgjennomsnitt</div>
-    </div>
-    <div class="card">
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="label">Soloppgang</div>
-          <div id="sunriseNow" class="value">–</div>
-        </div>
-        <div class="metric">
-          <div class="label">Solnedgang</div>
-          <div id="sunsetNow" class="value">–</div>
-        </div>
-      </div>
-      <div id="daylightDetail" class="detail">astronomiske tider for Ålgård</div>
     </div>
     <div class="card pressure-card">
       <div class="metric-grid">
@@ -306,6 +293,19 @@
           <div id="pressureDetail" class="detail">–</div>
         </div>
       </div>
+    </div>
+    <div class="card">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Soloppgang</div>
+          <div id="sunriseNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Solnedgang</div>
+          <div id="sunsetNow" class="value">–</div>
+        </div>
+      </div>
+      <div id="daylightDetail" class="detail">astronomiske tider for Ålgård</div>
     </div>
   </section>
 
