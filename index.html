@@ -159,7 +159,7 @@
     .value,.temp-value-grid .metric .value,.metric-grid .metric .value{font-size:27px;font-weight:650;letter-spacing:-.035em;line-height:1.2;margin-top:3px;text-align:center;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:normal}
     .unit{font-size:.52em;font-weight:500;color:#aebfd4;letter-spacing:0;white-space:nowrap}
     .value .reading{white-space:nowrap}
-    #windDirNow,#windDirNowKmh{font-size:23px;line-height:1.41}
+    #windDirNow{font-size:23px;line-height:1.41}
     .card > .label{text-align:center}
     .card > .detail{margin-top:auto;padding-top:10px;border-top:1px solid rgba(159,176,200,.16)}
     .detail{font-size:12px;line-height:1.5;overflow-wrap:normal}
@@ -182,8 +182,8 @@
       .actions{justify-content:flex-start;margin-top:0}
       .panel{padding:14px 12px}
     }
-    #temperatureCard{cursor:pointer;touch-action:manipulation}
-    #temperatureCard:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+    #temperatureCard,#windCard{cursor:pointer;touch-action:manipulation}
+    #temperatureCard:focus-visible,#windCard:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   </style>
 </head>
 <body>
@@ -191,7 +191,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.21 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.22 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -232,7 +232,7 @@
       </div>
       <div id="precipAgreement" class="detail">–</div>
     </div>
-    <div class="card">
+    <div class="card" id="windCard" role="button" tabindex="0" aria-label="Vindstyrke i meter per sekund. Bytt til kilometer i timen" title="Trykk for å bytte mellom m/s og km/t">
       <div class="metric-grid">
         <div class="metric">
           <div class="label">Vind nå</div>
@@ -244,19 +244,6 @@
         </div>
       </div>
       <div id="windSpread" class="detail">–</div>
-    </div>
-    <div class="card">
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="label">Vind nå · km/t</div>
-          <div id="windNowKmh" class="value">–</div>
-        </div>
-        <div class="metric">
-          <div class="label">Vindretning</div>
-          <div id="windDirNowKmh" class="value">–</div>
-        </div>
-      </div>
-      <div id="windSpreadKmh" class="detail">–</div>
     </div>
     <div class="card">
       <div class="label">Luftfuktighet</div>
@@ -305,7 +292,7 @@
     </div>
     <div class="panel">
       <h2>Vindstyrke</h2>
-      <p>Vind 10 meter over bakken i m/s. Hvit linje er modellgjennomsnitt.</p>
+      <p id="windDescription">Vind 10 meter over bakken i m/s. Hvit linje er modellgjennomsnitt.</p>
       <div class="chart-wrap"><canvas id="windChart"></canvas></div>
     </div>
     <div class="panel">
@@ -360,6 +347,8 @@
   const charts = [];
   let temperatureUnit = '°C';
   let currentTemperatures = null;
+  let windUnit = 'm/s';
+  let currentWind = null;
   const temperatureValue = value => Number.isFinite(value)
     ? (temperatureUnit === '°F' ? value * 9 / 5 + 32 : value)
     : null;
@@ -380,7 +369,7 @@
       : 'Temperatur i Fahrenheit. Bytt til Celsius');
     if(currentTemperatures){
       renderTemperatureValues();
-      formatSummaryCards(true);
+      formatSummaryCards('temperatureCard');
     }
     const chart = typeof Chart !== 'undefined' ? Chart.getChart('tempChart') : null;
     if(chart && chart.celsiusDatasets){
@@ -388,6 +377,40 @@
         dataset.data = chart.celsiusDatasets[i].map(temperatureValue);
       });
       chart.options = baseOptions(chart.data.labels,temperatureUnit);
+      chart.update('none');
+    }
+  }
+
+  const windValue = value => Number.isFinite(value)
+    ? (windUnit === 'km/t' ? value * 3.6 : value)
+    : null;
+
+  function renderWindValues(){
+    if(!currentWind) return;
+    const {mean,gust,minToday,maxToday,directionText} = currentWind;
+    $('windNow').textContent = `${fmt(windValue(mean),1)} ${windUnit}`;
+    $('windDirNow').textContent = directionText;
+    $('windSpread').textContent =
+      `Vindkast ${fmt(windValue(gust),1)} ${windUnit} · hittil i dag ${fmt(windValue(minToday),1)}–${fmt(windValue(maxToday),1)} ${windUnit}`;
+  }
+
+  function toggleWindUnit(){
+    windUnit = windUnit === 'm/s' ? 'km/t' : 'm/s';
+    $('windCard').setAttribute('aria-label',windUnit === 'm/s'
+      ? 'Vindstyrke i meter per sekund. Bytt til kilometer i timen'
+      : 'Vindstyrke i kilometer i timen. Bytt til meter per sekund');
+    $('windDescription').textContent =
+      `Vind 10 meter over bakken i ${windUnit}. Hvit linje er modellgjennomsnitt.`;
+    if(currentWind){
+      renderWindValues();
+      formatSummaryCards('windCard');
+    }
+    const chart = typeof Chart !== 'undefined' ? Chart.getChart('windChart') : null;
+    if(chart && chart.mpsDatasets){
+      chart.data.datasets.forEach((dataset,i) => {
+        dataset.data = chart.mpsDatasets[i].map(windValue);
+      });
+      chart.options = baseOptions(chart.data.labels,windUnit,0,null);
       chart.update('none');
     }
   }
@@ -816,16 +839,22 @@
     destroyCanvasChart(id);
     const rawDatasets = datasetsForLine(models,field,times);
     const isTemperature = id === 'tempChart';
+    const isWind = id === 'windChart';
     if(isTemperature) unit = temperatureUnit;
-    const datasets = isTemperature
-      ? rawDatasets.map(dataset => ({...dataset,data:dataset.data.map(temperatureValue)}))
-      : rawDatasets;
+    if(isWind) unit = windUnit;
+    const datasets = rawDatasets.map(dataset => ({
+      ...dataset,
+      data:isTemperature ? dataset.data.map(temperatureValue)
+        : isWind ? dataset.data.map(windValue)
+        : dataset.data
+    }));
     const chart = new Chart($(id),{
       type:'line',
       data:{labels:times,datasets},
       options:baseOptions(times,unit,minY,maxY)
     });
     if(isTemperature) chart.celsiusDatasets = rawDatasets.map(dataset => dataset.data.slice());
+    if(isWind) chart.mpsDatasets = rawDatasets.map(dataset => dataset.data.slice());
     charts.push(chart);
   }
 
@@ -940,15 +969,8 @@
     const windMinToday = minv(elapsedWindMean);
     const windMaxToday = maxv(elapsedWindMean);
 
-    $('windNow').textContent = `${fmt(windMean,1)} m/s`;
-    $('windDirNow').textContent = directionText;
-    $('windSpread').textContent =
-      `Vindkast ${fmt(gustNow,1)} m/s · hittil i dag ${fmt(windMinToday,1)}–${fmt(windMaxToday,1)} m/s`;
-
-    $('windNowKmh').textContent = `${fmt(finite(windMean) ? windMean*3.6 : null,1)} km/t`;
-    $('windDirNowKmh').textContent = directionText;
-    $('windSpreadKmh').textContent =
-      `Vindkast ${fmt(finite(gustNow) ? gustNow*3.6 : null,1)} km/t · hittil i dag ${fmt(finite(windMinToday) ? windMinToday*3.6 : null,1)}–${fmt(finite(windMaxToday) ? windMaxToday*3.6 : null,1)} km/t`;
+    currentWind = {mean:windMean,gust:gustNow,minToday:windMinToday,maxToday:windMaxToday,directionText};
+    renderWindValues();
 
     const pressureNow = mean(pressv);
     const past12Idx = Math.max(0, idx - 12);
@@ -982,8 +1004,8 @@
       `i dag ${fmt(minv(todayRhMean),0)}–${fmt(maxv(todayRhMean),0)} %`;
   }
 
-  function formatSummaryCards(temperatureOnly=false){
-    const root = temperatureOnly ? $('temperatureCard') : document;
+  function formatSummaryCards(cardId=null){
+    const root = cardId ? $(cardId) : document;
     root.querySelectorAll('.card .value:not(#pressureTrend)').forEach(el => {
       const text = el.textContent;
       const match = text.match(/^(.*?) (°C|°F|mm\/h|mm|m\/s|km\/t|%|mbar)$/);
@@ -997,9 +1019,12 @@
       reading.append(unit);
       el.replaceChildren(reading);
     });
-    const details = ['tempSpread','precipAgreement','windSpread','windSpreadKmh','daylightDetail'];
+    const details = ['tempSpread','precipAgreement','windSpread','daylightDetail'];
     const humidityDetail = $('rhNow').nextElementSibling;
-    (temperatureOnly ? [$('tempSpread')] : [...details.map($),humidityDetail]).forEach(el => {
+    const selectedDetails = cardId === 'temperatureCard' ? [$('tempSpread')]
+      : cardId === 'windCard' ? [$('windSpread')]
+      : [...details.map($),humidityDetail];
+    selectedDetails.forEach(el => {
       const parts = el.textContent.split(' · ');
       const rows = parts.map(part => {
         const match = part.match(/^(i dag hittil|siste 30 døgn|hittil i dag|i dag|duggpunkt|vindkast|dagslys|soltimer) (.*)$/i);
@@ -1092,6 +1117,14 @@
     if(event.key === 'Enter' || event.key === ' '){
       event.preventDefault();
       toggleTemperatureUnit();
+    }
+  });
+
+  $('windCard').addEventListener('click',toggleWindUnit);
+  $('windCard').addEventListener('keydown',event => {
+    if(event.key === 'Enter' || event.key === ' '){
+      event.preventDefault();
+      toggleWindUnit();
     }
   });
 
