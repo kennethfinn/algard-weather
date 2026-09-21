@@ -140,6 +140,60 @@
       .chart-wrap{height:280px}
       .sub{font-size:13px;line-height:1.4}
     }
+
+    /* Summary cards: a consistent reading order at every screen size. */
+    .wrap{padding:28px 24px}
+    header{margin:6px 0 20px}
+    h1{line-height:1.12}
+    .sub{line-height:1.65;max-width:620px}
+    .status{line-height:1.6;margin-bottom:22px}
+    .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:28px}
+    .card{padding:22px;display:flex;flex-direction:column;gap:20px;box-shadow:0 8px 24px rgba(0,0,0,.12);background:linear-gradient(145deg,#14243a,#101d30);border-color:#2b3e57}
+    .temp-value-grid,.metric-grid{gap:20px}
+    .metric > .label{min-height:36px}
+    #windDirNow,#windDirNowKmh{font-size:24px;line-height:1.5625}
+    .metric + .metric{border-left:1px solid rgba(159,176,200,.16);padding-left:20px}
+    .label,.temp-value-grid .metric .label,.metric-grid .metric .label{font-size:12px;line-height:1.5;text-transform:none;letter-spacing:.01em;color:#b5c3d6}
+    .value,.temp-value-grid .metric .value,.metric-grid .metric .value{font-size:30px;font-weight:650;letter-spacing:-.035em;line-height:1.25;margin-top:8px;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:normal}
+    .unit{font-size:.52em;font-weight:500;color:#aebfd4;letter-spacing:0;white-space:nowrap}
+    .value .reading{white-space:nowrap}
+    .card > .detail{margin-top:auto;padding-top:16px;border-top:1px solid rgba(159,176,200,.16)}
+    .detail{font-size:12px;line-height:1.65;overflow-wrap:normal}
+    .detail-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+    .detail-row + .detail-row{margin-top:7px}
+    .detail-row strong{font-weight:500;color:#d4dfec;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .card > #rhNow{margin-top:-12px}
+    .pressure-card{grid-column:1/-1}
+    #pressureTrend{font-size:24px;letter-spacing:-.015em}
+    .metric > .detail{margin-top:7px}
+    .grid{gap:18px}
+    .panel{padding:22px;border-color:#253951;box-shadow:0 8px 24px rgba(0,0,0,.1)}
+    .panel h2{font-size:18px;margin-bottom:8px;font-weight:650}
+    .panel p{line-height:1.65;max-width:850px;margin-bottom:18px}
+    .section-title{margin-top:24px}
+    button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+    @media(min-width:1320px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(max-width:699px){
+      .wrap{padding:20px 16px}
+      header{display:block}
+      .actions{justify-content:flex-start;margin-top:14px}
+      .cards{grid-template-columns:1fr;gap:12px;margin-bottom:24px}
+      .card{padding:20px;gap:18px}
+      .pressure-card{grid-column:auto}
+      .panel{padding:18px 14px}
+      .temp-value-grid,.metric-grid{gap:16px}
+      .metric + .metric{padding-left:16px}
+      .value,.temp-value-grid .metric .value,.metric-grid .metric .value{font-size:28px}
+      #pressureTrend{font-size:22px}
+    }
+    @media(max-width:359px){
+      .wrap{padding:16px 12px}
+      .card{padding:16px}
+      .temp-value-grid,.metric-grid{gap:12px}
+      .metric + .metric{padding-left:12px}
+      .value,.temp-value-grid .metric .value,.metric-grid .metric .value{font-size:25px}
+      #pressureTrend{font-size:20px}
+    }
   </style>
 </head>
 <body>
@@ -147,7 +201,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.14 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.15 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -232,7 +286,7 @@
       </div>
       <div id="daylightDetail" class="detail">astronomiske tider for Ålgård</div>
     </div>
-    <div class="card">
+    <div class="card pressure-card">
       <div class="metric-grid">
         <div class="metric">
           <div class="label">Lufttrykk</div>
@@ -899,6 +953,40 @@
       `i dag ${fmt(minv(todayRhMean),0)}–${fmt(maxv(todayRhMean),0)} %`;
   }
 
+  function formatSummaryCards(){
+    document.querySelectorAll('.card .value:not(#pressureTrend)').forEach(el => {
+      const text = el.textContent;
+      const match = text.match(/^(.*?) (°C|mm\/h|mm|m\/s|km\/t|%|mbar)$/);
+      if(!match) return;
+      const reading = document.createElement('span');
+      reading.className = 'reading';
+      reading.append(document.createTextNode(match[1] + ' '));
+      const unit = document.createElement('span');
+      unit.className = 'unit';
+      unit.textContent = match[2];
+      reading.append(unit);
+      el.replaceChildren(reading);
+    });
+    const details = ['tempSpread','precipAgreement','windSpread','windSpreadKmh','daylightDetail'];
+    const humidityDetail = $('rhNow').nextElementSibling;
+    [...details.map($),humidityDetail].forEach(el => {
+      const parts = el.textContent.split(' · ');
+      const rows = parts.map(part => {
+        const match = part.match(/^(i dag hittil|siste 30 døgn|hittil i dag|i dag|duggpunkt|vindkast|dagslys|soltimer) (.*)$/i);
+        if(!match) return document.createTextNode(part);
+        const row = document.createElement('div');
+        row.className = 'detail-row';
+        const label = document.createElement('span');
+        label.textContent = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+        const value = document.createElement('strong');
+        value.textContent = match[2];
+        row.append(label,value);
+        return row;
+      });
+      el.replaceChildren(...rows);
+    });
+  }
+
   let loadInProgress = false;
 
   function finishLoad(){
@@ -944,6 +1032,7 @@
 
     renderCurrent(times,models,recentHistoryResult.ok ? recentHistoryResult.value : null);
     renderLocalExtras(localExtrasResult.ok ? localExtrasResult.value : null);
+    formatSummaryCards();
     renderModelChips(models,failed,times);
 
     destroyCharts();
