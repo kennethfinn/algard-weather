@@ -184,6 +184,12 @@
     }
     #temperatureCard,#windCard{cursor:pointer;touch-action:manipulation}
     #temperatureCard:focus-visible,#windCard:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+    .alert{display:none;border:1px solid #e4ad3c;background:rgba(95,58,7,.9);color:#fff1ca;border-radius:14px;padding:12px 14px;margin:0 0 14px;line-height:1.45}
+    .alert strong{display:block;margin-bottom:3px}
+    .alert a{color:#fff1ca}
+    .insight{font-size:14px;line-height:1.45;text-align:center;color:#e5edf7}
+    .insight .muted{display:block;color:var(--muted);font-size:12px;margin-top:5px}
+    .risk-low{color:#91edce}.risk-mid{color:#ffe19b}.risk-high{color:#ffb0b8}
   </style>
 </head>
 <body>
@@ -191,7 +197,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.25 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.26 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -204,8 +210,32 @@
     <span id="statusText">Henter siste modelldata …</span>
   </div>
   <div id="errorBox" class="error"></div>
+  <div id="alertBox" class="alert" role="status"></div>
 
   <section class="cards">
+    <div class="card">
+      <div class="label">Vær nå</div>
+      <div id="weatherNow" class="value">–</div>
+      <div id="weatherDetail" class="detail">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Neste nedbør</div>
+      <div id="nextPrecip" class="value">–</div>
+      <div id="nextPrecipDetail" class="detail">beregnes fra tilgjengelige modeller</div>
+    </div>
+    <div class="card">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="label">Sikt</div>
+          <div id="visibilityNow" class="value">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">UV-indeks · maks i dag</div>
+          <div id="uvToday" class="value">–</div>
+        </div>
+      </div>
+      <div id="localRisk" class="detail">beregnede lokale indikatorer</div>
+    </div>
     <div class="card" id="temperatureCard" role="button" tabindex="0" aria-label="Temperatur i Celsius. Bytt til Fahrenheit" title="Trykk for å bytte mellom °C og °F">
       <div class="temp-value-grid">
         <div class="metric">
@@ -588,8 +618,10 @@
       longitude: LON,
       elevation: ELEVATION,
       timezone: 'Europe/Oslo',
-      forecast_days: '1',
-      daily: 'sunrise,sunset,daylight_duration,sunshine_duration'
+      forecast_days: '7',
+      current: 'weather_code,cloud_cover,visibility,uv_index',
+      hourly: 'visibility,temperature_2m,dew_point_2m',
+      daily: 'sunrise,sunset,daylight_duration,sunshine_duration,uv_index_max'
     });
     const res = await fetch(`${API}?${params.toString()}`, {cache:'no-store'});
     if(!res.ok) throw new Error(`lokaldata HTTP ${res.status}`);
@@ -601,13 +633,40 @@
     return iso.split('T')[1].slice(0,5);
   }
 
+  function weatherText(code){
+    const labels = {
+      0:'Klart',1:'For det meste klart',2:'Delvis skyet',3:'Overskyet',
+      45:'Tåke',48:'Rimtåke',51:'Lett yr',53:'Yr',55:'Kraftig yr',
+      56:'Lett underkjølt yr',57:'Underkjølt yr',61:'Lett regn',63:'Regn',65:'Kraftig regn',
+      66:'Lett underkjølt regn',67:'Underkjølt regn',71:'Lett snø',73:'Snø',75:'Kraftig snø',
+      77:'Snøkorn',80:'Lette regnbyger',81:'Regnbyger',82:'Kraftige regnbyger',
+      85:'Lette snøbyger',86:'Kraftige snøbyger',95:'Tordenvær',96:'Tordenvær med hagl',99:'Kraftig tordenvær med hagl'
+    };
+    return labels[code] || 'Ukjent værtype';
+  }
+
   function renderLocalExtras(data){
     if(!data){
       $('sunriseNow').textContent = '–';
       $('sunsetNow').textContent = '–';
       $('daylightDetail').textContent = 'soldata utilgjengelig';
+      $('weatherNow').textContent = '–';
+      $('weatherDetail').textContent = 'lokaldata utilgjengelig';
+      $('visibilityNow').textContent = '–';
+      $('uvToday').textContent = '–';
       return;
     }
+
+    const current = data.current || {};
+    $('weatherNow').textContent = weatherText(current.weather_code);
+    $('weatherDetail').textContent = finite(current.cloud_cover)
+      ? `Skydekke: ${fmt(current.cloud_cover,0)} % · best-match modell`
+      : 'best-match modell';
+    $('visibilityNow').textContent = finite(current.visibility)
+      ? `${fmt(current.visibility/1000,1)} km`
+      : '–';
+    const uvMax = data.daily?.uv_index_max?.[0];
+    $('uvToday').textContent = fmt(uvMax,1);
 
     const sunrise = data.daily?.sunrise?.[0];
     const sunset = data.daily?.sunset?.[0];
@@ -635,6 +694,43 @@
 
     $('daylightDetail').textContent =
       `Dagslys ${daylightText} · soltimer ${sunshineText}`;
+  }
+
+  async function fetchAlerts(){
+    const url = `https://api.met.no/weatherapi/metalerts/2.0/current.json?lat=${LAT}&lon=${LON}&lang=no`;
+    const res = await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error(`farevarsel HTTP ${res.status}`);
+    return await res.json();
+  }
+
+  function renderAlerts(data){
+    const box = $('alertBox');
+    const alerts = Array.isArray(data?.features) ? data.features : [];
+    if(!alerts.length){
+      box.style.display = 'none';
+      box.replaceChildren();
+      return;
+    }
+    const p = alerts[0].properties || {};
+    const level = p.awareness_level || p.severity || '';
+    const title = p.event || p.headline || 'Aktivt farevarsel';
+    const detail = p.description || p.instruction || '';
+    const link = p.web;
+    box.style.display = 'block';
+    box.replaceChildren();
+    const strong = document.createElement('strong');
+    strong.textContent = `MET Norway · ${level ? level + ' · ' : ''}${title}`;
+    box.append(strong);
+    if(detail) box.append(document.createTextNode(detail));
+    if(link){
+      box.append(document.createTextNode(' '));
+      const a = document.createElement('a');
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Les farevarselet';
+      box.append(a);
+    }
   }
 
   function lastAvailableIndex(m){
@@ -771,6 +867,7 @@
         legend:{display:false},
         tooltip:{
           displayColors:true,
+          filter: context => context.dataset.label === 'Modellgjennomsnitt' || context.dataset.label === 'Sirkulært gjennomsnitt',
           boxWidth:11,
           boxHeight:11,
           boxPadding:4,
@@ -936,6 +1033,51 @@
       .map(i => mean(valuesAt(models,'wind',i)))
       .filter(finite);
 
+    const futureIdx = times.map((t,i)=>({t,i})).filter(x => x.t >= key);
+    const firstWet = futureIdx.find(x => {
+      const vals = valuesAt(models,'precip',x.i);
+      return vals.length >= 2 && mean(vals) >= 0.1;
+    });
+    if(firstWet){
+      const vals = valuesAt(models,'precip',firstWet.i);
+      const agreeing = vals.filter(v => v >= 0.2).length;
+      let duration = 0;
+      for(let i=firstWet.i;i<times.length;i++){
+        const hourVals = valuesAt(models,'precip',i);
+        if(hourVals.length < 2 || mean(hourVals) < 0.1) break;
+        duration++;
+      }
+      const when = firstWet.t.slice(0,10) === today
+        ? `kl. ${firstWet.t.slice(11,16)}`
+        : displayTime(firstWet.t);
+      $('nextPrecip').textContent = when;
+      $('nextPrecipDetail').textContent =
+        `${agreeing} av ${vals.length} modeller varsler minst 0,2 mm/t · beregnet varighet ca. ${Math.max(1,duration)} t`;
+    }else{
+      $('nextPrecip').textContent = 'Ikke varslet';
+      $('nextPrecipDetail').textContent = 'ingen tydelig nedbørsperiode i tilgjengelig prognose';
+    }
+
+    const next24 = futureIdx.slice(0,24).map(x => x.i);
+    let maxFrostShare = 0;
+    next24.forEach(i => {
+      const vals = valuesAt(models,'temp',i);
+      if(vals.length) maxFrostShare = Math.max(maxFrostShare, vals.filter(v=>v<=0).length/vals.length);
+    });
+    const fogInputs = {
+      visibility: null,
+      spread: finite(mean(tv)) && finite(mean(dewV)) ? mean(tv)-mean(dewV) : null,
+      wind: mean(wv)
+    };
+    const visibilityText = $('visibilityNow').textContent;
+    if(visibilityText && visibilityText !== '–') fogInputs.visibility = parseFloat(visibilityText.replace(',','.')) * 1000;
+    const fogRisk = (finite(fogInputs.visibility) && fogInputs.visibility < 1000) ||
+      (finite(fogInputs.spread) && fogInputs.spread <= 1.5 && finite(fogInputs.wind) && fogInputs.wind <= 3);
+    const riskParts = [];
+    if(fogRisk) riskParts.push('beregnet tåkerisiko');
+    if(maxFrostShare >= .5) riskParts.push(`frostfare neste 24 t (${Math.round(maxFrostShare*100)} % av modellene)`);
+    $('localRisk').textContent = riskParts.length ? riskParts.join(' · ') : 'ingen tydelig tåke- eller frostindikasjon';
+
     currentTemperatures = {now:mean(tv),apparent:mean(av),low:minv(todayTempMean),high:maxv(todayTempMean),dew:mean(dewV)};
     renderTemperatureValues();
 
@@ -1065,10 +1207,11 @@
       return;
     }
 
-    const [results, recentHistoryResult, localExtrasResult] = await Promise.all([
+    const [results, recentHistoryResult, localExtrasResult, alertsResult] = await Promise.all([
       Promise.allSettled(MODELS.map(fetchModel)),
       fetchRecentHistory().then(value => ({ok:true,value})).catch(error => ({ok:false,error})),
-      fetchLocalExtras().then(value => ({ok:true,value})).catch(error => ({ok:false,error}))
+      fetchLocalExtras().then(value => ({ok:true,value})).catch(error => ({ok:false,error})),
+      fetchAlerts().then(value => ({ok:true,value})).catch(error => ({ok:false,error}))
     ]);
     const ok = [];
     const failed = [];
@@ -1088,8 +1231,9 @@
     const times = aligned.times;
     const models = aligned.models;
 
-    renderCurrent(times,models,recentHistoryResult.ok ? recentHistoryResult.value : null);
     renderLocalExtras(localExtrasResult.ok ? localExtrasResult.value : null);
+    renderCurrent(times,models,recentHistoryResult.ok ? recentHistoryResult.value : null);
+    renderAlerts(alertsResult.ok ? alertsResult.value : null);
     formatSummaryCards();
     renderModelChips(models,failed,times);
 
@@ -1110,8 +1254,9 @@
 
     const suffix = failed.length ? ` · ${failed.length} modell${failed.length === 1 ? '' : 'er'} utilgjengelig` : '';
     const historySuffix = recentHistoryResult.ok ? '' : ' · nedbørshistorikk utilgjengelig';
-    const localSuffix = localExtrasResult.ok ? '' : ' · sol/trykkdata utilgjengelig';
-    setStatus(`Oppdatert med ${models.length} værmodeller · Trykk på temperatur- eller vindboksen for å endre enhet${suffix}${historySuffix}${localSuffix}`,'ok');
+    const localSuffix = localExtrasResult.ok ? '' : ' · lokale tilleggsdata utilgjengelige';
+    const alertSuffix = alertsResult.ok ? '' : ' · farevarsler utilgjengelige';
+    setStatus(`Oppdatert med ${models.length} værmodeller · Trykk på temperatur- eller vindboksen for å endre enhet${suffix}${historySuffix}${localSuffix}${alertSuffix}`,'ok');
     finishLoad();
   }
 
