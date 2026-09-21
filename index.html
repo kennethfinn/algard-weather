@@ -161,11 +161,11 @@
     .value .reading{white-space:nowrap}
     #windDirNow{font-size:23px;line-height:1.41}
     .card > .label{text-align:center}
-    .card > .detail{margin-top:auto;padding-top:10px;border-top:1px solid rgba(159,176,200,.16)}
+    .card > .detail{margin-top:auto;padding-top:10px;border-top:1px solid rgba(159,176,200,.16);text-align:center}
     .detail{font-size:12px;line-height:1.5;overflow-wrap:normal}
-    .detail-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+    .detail-row{display:flex;justify-content:center;align-items:baseline;gap:.35em}
     .detail-row + .detail-row{margin-top:4px}
-    .detail-row strong{font-weight:500;color:#d4dfec;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .detail-row strong{font-weight:500;color:#d4dfec;font-variant-numeric:tabular-nums;white-space:nowrap}
     .card > #rhNow{margin-top:0}
     #pressureTrend{font-size:21px;letter-spacing:-.015em;line-height:1.54}
     .metric > .detail{margin-top:5px;text-wrap:balance}
@@ -191,7 +191,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.22 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.23 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -1032,7 +1032,7 @@
         const row = document.createElement('div');
         row.className = 'detail-row';
         const label = document.createElement('span');
-        label.textContent = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+        label.textContent = `${match[1].charAt(0).toUpperCase() + match[1].slice(1)}:`;
         const value = document.createElement('strong');
         value.textContent = match[2];
         row.append(label,value);
