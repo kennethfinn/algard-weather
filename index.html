@@ -191,7 +191,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.24 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.25 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -226,8 +226,8 @@
           <div id="precipNow" class="value">–</div>
         </div>
         <div class="metric">
-          <div class="label">Siste 24 timer</div>
-          <div id="precip24h" class="value">–</div>
+          <div class="label">Hittil i dag</div>
+          <div id="precipToday" class="value">–</div>
         </div>
       </div>
       <div id="precipAgreement" class="detail">–</div>
@@ -947,7 +947,7 @@
     const forecastTodayPrecip = forecastTodayValues.length
       ? forecastTodayValues.reduce((sum,value) => sum + value,0)
       : null;
-    let precip24h = null;
+    let precipToday = null;
     let precip30d = null;
     if(recentHistory && Array.isArray(recentHistory.time) && Array.isArray(recentHistory.precipitation)){
       const hist = recentHistory.time.map((t,i) => ({
@@ -957,11 +957,11 @@
 
       const last720 = hist.slice(-720);
       precip30d = last720.length ? last720.reduce((s,x) => s + x.p, 0) : null;
-      const last24 = hist.slice(-24);
-      precip24h = last24.length ? last24.reduce((s,x) => s + x.p, 0) : null;
+      const todayRows = hist.filter(x => x.t.startsWith(today));
+      precipToday = todayRows.length ? todayRows.reduce((s,x) => s + x.p, 0) : null;
     }
 
-    $('precip24h').textContent = `${fmt(precip24h,1)} mm`;
+    $('precipToday').textContent = `${fmt(precipToday,1)} mm`;
     $('precipAgreement').textContent =
       `varslet i dag ${fmt(forecastTodayPrecip,1)} mm · siste 30 døgn ${fmt(precip30d,1)} mm`;
 
