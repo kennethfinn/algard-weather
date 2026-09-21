@@ -182,6 +182,8 @@
       .actions{justify-content:flex-start;margin-top:0}
       .panel{padding:14px 12px}
     }
+    #temperatureCard{cursor:pointer;touch-action:manipulation}
+    #temperatureCard:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   </style>
 </head>
 <body>
@@ -189,7 +191,7 @@
   <header>
     <div>
       <h1>Ålgård DidWell</h1>
-      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.20 · oppdateres automatisk når siden åpnes</div>
+      <div class="sub">58,76°N · 5,85°E · 116 moh. · 7 døgn · v1.21 · oppdateres automatisk når siden åpnes</div>
     </div>
     <div class="actions">
       <button id="refreshBtn" type="button">Oppdater</button>
@@ -204,7 +206,7 @@
   <div id="errorBox" class="error"></div>
 
   <section class="cards">
-    <div class="card">
+    <div class="card" id="temperatureCard" role="button" tabindex="0" aria-label="Temperatur i Celsius. Bytt til Fahrenheit" title="Trykk for å bytte mellom °C og °F">
       <div class="temp-value-grid">
         <div class="metric">
           <div class="label">Temperatur nå</div>
@@ -356,6 +358,39 @@
 
   const COLORS = ['#72b7ff','#ff9f6e','#a58cff','#5cd3aa','#ffd166','#f783ac','#9dd46f','#6ed0e0','#f0a7ff'];
   const charts = [];
+  let temperatureUnit = '°C';
+  let currentTemperatures = null;
+  const temperatureValue = value => Number.isFinite(value)
+    ? (temperatureUnit === '°F' ? value * 9 / 5 + 32 : value)
+    : null;
+
+  function renderTemperatureValues(){
+    if(!currentTemperatures) return;
+    const {now,apparent,low,high,dew} = currentTemperatures;
+    $('tempNow').textContent = `${fmt(temperatureValue(now),1)} ${temperatureUnit}`;
+    $('apparentNow').textContent = `${fmt(temperatureValue(apparent),1)} ${temperatureUnit}`;
+    $('tempSpread').textContent =
+      `i dag ${fmt(temperatureValue(low),1)}–${fmt(temperatureValue(high),1)} ${temperatureUnit} · duggpunkt ${fmt(temperatureValue(dew),1)} ${temperatureUnit}`;
+  }
+
+  function toggleTemperatureUnit(){
+    temperatureUnit = temperatureUnit === '°C' ? '°F' : '°C';
+    $('temperatureCard').setAttribute('aria-label',temperatureUnit === '°C'
+      ? 'Temperatur i Celsius. Bytt til Fahrenheit'
+      : 'Temperatur i Fahrenheit. Bytt til Celsius');
+    if(currentTemperatures){
+      renderTemperatureValues();
+      formatSummaryCards(true);
+    }
+    const chart = typeof Chart !== 'undefined' ? Chart.getChart('tempChart') : null;
+    if(chart && chart.celsiusDatasets){
+      chart.data.datasets.forEach((dataset,i) => {
+        dataset.data = chart.celsiusDatasets[i].map(temperatureValue);
+      });
+      chart.options = baseOptions(chart.data.labels,temperatureUnit);
+      chart.update('none');
+    }
+  }
 
   const $ = id => document.getElementById(id);
   const finite = v => Number.isFinite(v);
@@ -693,6 +728,7 @@
 
   function tooltipNumber(v,unit){
     if(!finite(v)) return '–';
+    if(unit === '°C' || unit === '°F') return `${v.toFixed(1).replace('.',',')} ${unit}`;
     if(unit === 'grader') return `${Math.round(v)}°`;
     if(unit === 'mm/h') return `${v.toFixed(2).replace('.',',')} mm/h`;
     if(unit === '%') return `${v.toFixed(0)} %`;
@@ -778,11 +814,18 @@
 
   function makeLine(id,times,models,field,unit,minY=null,maxY=null){
     destroyCanvasChart(id);
+    const rawDatasets = datasetsForLine(models,field,times);
+    const isTemperature = id === 'tempChart';
+    if(isTemperature) unit = temperatureUnit;
+    const datasets = isTemperature
+      ? rawDatasets.map(dataset => ({...dataset,data:dataset.data.map(temperatureValue)}))
+      : rawDatasets;
     const chart = new Chart($(id),{
       type:'line',
-      data:{labels:times,datasets:datasetsForLine(models,field,times)},
+      data:{labels:times,datasets},
       options:baseOptions(times,unit,minY,maxY)
     });
+    if(isTemperature) chart.celsiusDatasets = rawDatasets.map(dataset => dataset.data.slice());
     charts.push(chart);
   }
 
@@ -864,10 +907,8 @@
       .map(i => mean(valuesAt(models,'wind',i)))
       .filter(finite);
 
-    $('tempNow').textContent = `${fmt(mean(tv),1)} °C`;
-    $('apparentNow').textContent = `${fmt(mean(av),1)} °C`;
-    $('tempSpread').textContent =
-      `i dag ${fmt(minv(todayTempMean),1)}–${fmt(maxv(todayTempMean),1)} °C · duggpunkt ${fmt(mean(dewV),1)} °C`;
+    currentTemperatures = {now:mean(tv),apparent:mean(av),low:minv(todayTempMean),high:maxv(todayTempMean),dew:mean(dewV)};
+    renderTemperatureValues();
 
     $('precipNow').textContent = `${fmt(mean(pv),2)} mm/h`;
 
@@ -941,10 +982,11 @@
       `i dag ${fmt(minv(todayRhMean),0)}–${fmt(maxv(todayRhMean),0)} %`;
   }
 
-  function formatSummaryCards(){
-    document.querySelectorAll('.card .value:not(#pressureTrend)').forEach(el => {
+  function formatSummaryCards(temperatureOnly=false){
+    const root = temperatureOnly ? $('temperatureCard') : document;
+    root.querySelectorAll('.card .value:not(#pressureTrend)').forEach(el => {
       const text = el.textContent;
-      const match = text.match(/^(.*?) (°C|mm\/h|mm|m\/s|km\/t|%|mbar)$/);
+      const match = text.match(/^(.*?) (°C|°F|mm\/h|mm|m\/s|km\/t|%|mbar)$/);
       if(!match) return;
       const reading = document.createElement('span');
       reading.className = 'reading';
@@ -957,7 +999,7 @@
     });
     const details = ['tempSpread','precipAgreement','windSpread','windSpreadKmh','daylightDetail'];
     const humidityDetail = $('rhNow').nextElementSibling;
-    [...details.map($),humidityDetail].forEach(el => {
+    (temperatureOnly ? [$('tempSpread')] : [...details.map($),humidityDetail]).forEach(el => {
       const parts = el.textContent.split(' · ');
       const rows = parts.map(part => {
         const match = part.match(/^(i dag hittil|siste 30 døgn|hittil i dag|i dag|duggpunkt|vindkast|dagslys|soltimer) (.*)$/i);
@@ -1044,6 +1086,14 @@
     setStatus(`Oppdatert med ${models.length} værmodeller${suffix}${historySuffix}${localSuffix}`,'ok');
     finishLoad();
   }
+
+  $('temperatureCard').addEventListener('click',toggleTemperatureUnit);
+  $('temperatureCard').addEventListener('keydown',event => {
+    if(event.key === 'Enter' || event.key === ' '){
+      event.preventDefault();
+      toggleTemperatureUnit();
+    }
+  });
 
   $('refreshBtn').addEventListener('click', load);
   $('shareBtn').addEventListener('click', async () => {
