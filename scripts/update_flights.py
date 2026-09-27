@@ -44,7 +44,7 @@ def collect():
         }.items() if v is not None})
     aircraft.sort(key=lambda ac: ac["distance_km"])
 
-    xml = ET.fromstring(get("https://asrv.avinor.no/XmlFeed/v1.0?airport=SVG&TimeFrom=0&TimeTo=4&serviceType=E"))
+    xml = ET.fromstring(get("https://asrv.avinor.no/XmlFeed/v1.0?airport=SVG&TimeFrom=3&TimeTo=4&serviceType=E"))
     if xml.tag != "airport" or xml.attrib.get("name") != "SVG":
         raise ValueError("Unexpected Avinor airport response")
     flights_node = xml.find("flights")
@@ -57,7 +57,7 @@ def collect():
         if direction not in ("A", "D") or not scheduled:
             continue
         time = datetime.fromisoformat(scheduled.replace("Z", "+00:00"))
-        if not now <= time < now + timedelta(hours=4):
+        if not now - timedelta(hours=3) <= time < now + timedelta(hours=4):
             continue
         status = node.find("status")
         flights.append({
