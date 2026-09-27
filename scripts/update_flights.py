@@ -34,7 +34,7 @@ def collect():
         if not isinstance(lat, (float, int)) or not isinstance(lon, (float, int)):
             continue
         distance = distance_km(lat, lon)
-        if distance > RADIUS_KM or ac.get("seen_pos", 999) > 60:
+        if distance > RADIUS_KM or ac.get("seen_pos", 999) > 60 or ac.get("alt_baro") == "ground":
             continue
         aircraft.append({k: v for k, v in {
             "hex": ac.get("hex"), "flight": (ac.get("flight") or "").strip(),
