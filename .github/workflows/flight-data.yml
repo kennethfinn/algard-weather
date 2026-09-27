@@ -1,5 +1,9 @@
 name: SVG flight data
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/flight-data.yml'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
