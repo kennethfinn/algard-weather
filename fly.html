@@ -60,7 +60,7 @@
       $('schedule-count').textContent=`${flights.filter(f=>f.direction==='D').length} avganger · ${flights.filter(f=>f.direction==='A').length} ankomster`;
       const sb=$('schedule-body');sb.replaceChildren();
       if(!flights.length)empty(sb,'Ingen planlagte flyvninger funnet for de neste tre timene.');
-      flights.forEach(f=>{const row=document.createElement('tr');cell(row,timeFormat.format(Date.parse(f.scheduled)));cell(row,f.id).firstChild.className='primary';cell(row,f.direction==='D'?'Avgang':'Ankomst');cell(row,f.airport);cell(row,statusNames[f.status_code]||'Planlagt',f.status_code==='E'&&f.status_time?`Ny tid ${timeFormat.format(Date.parse(f.status_time))}`:null);sb.append(row)});
+      flights.forEach(f=>{const row=document.createElement('tr');cell(row,timeFormat.format(Date.parse(f.scheduled)));cell(row,f.id).firstChild.className='primary';cell(row,f.direction==='D'?'Avgang':'Ankomst');cell(row,f.airport);cell(row,statusNames[f.status_code]||'Planlagt',f.status_code==='E'&&f.status_time?`Anslått ${timeFormat.format(Date.parse(f.status_time))}`:null);sb.append(row)});
     }
     async function load(){
       $('refresh').disabled=true;
