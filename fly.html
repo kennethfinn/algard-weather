@@ -33,7 +33,7 @@
   </main>
   <script>
   (() => {
-    const DATA_URL = 'https://raw.githubusercontent.com/kennethfinn/algard-weather/flight-data/data.json';
+    const DATA_URL = 'https://api.github.com/repos/kennethfinn/algard-weather/contents/data.json?ref=flight-data';
     const $ = id => document.getElementById(id);
     const timeFormat = new Intl.DateTimeFormat('nb-NO',{timeZone:'Europe/Oslo',hour:'2-digit',minute:'2-digit'});
     const dateFormat = new Intl.DateTimeFormat('nb-NO',{timeZone:'Europe/Oslo',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -65,9 +65,12 @@
     async function load(){
       $('refresh').disabled=true;
       try{
-        const response=await fetch(DATA_URL+'?t='+Date.now(),{cache:'no-store'});
+        const response=await fetch(DATA_URL+'&t='+Date.now(),{cache:'no-store',headers:{Accept:'application/vnd.github+json'}});
         if(!response.ok)throw new Error(`HTTP ${response.status}`);
-        const data=await response.json();
+        const file=await response.json();
+        if(file.encoding!=='base64')throw new Error('Ukjent dataformat');
+        const bytes=Uint8Array.from(atob(file.content.replace(/\s/g,'')),char=>char.charCodeAt(0));
+        const data=JSON.parse(new TextDecoder().decode(bytes));
         if(!data.updated_at||!Array.isArray(data.aircraft)||!Array.isArray(data.flights))throw new Error('Ugyldig datagrunnlag');
         lastData=data;render(data);
       }catch(error){
