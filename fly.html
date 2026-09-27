@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1220">
+  <meta name="description" content="Fly i luften innen 200 km fra Stavanger lufthavn og avganger og ankomster de neste tre timene.">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <title>Flytrafikk SVG · Ålgård DidWell</title>
+  <style>
+    :root{color-scheme:dark;--bg:#08111f;--panel:#101d30;--line:#263a58;--text:#f5f8fc;--muted:#aebed2;--accent:#92c9ff;--good:#5bd6ad;--warn:#ffd166}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0d1e32,#08111f 45%);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+    a{color:var(--accent)}.wrap{max-width:1400px;margin:auto;padding:20px}header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+    h1{font-size:clamp(28px,5vw,44px);line-height:1.12;margin:8px 0 5px;letter-spacing:-.03em}h2{font-size:22px;margin:0}p{margin:4px 0;color:var(--muted)}
+    .back{display:inline-block;text-decoration:none;padding:5px 0}.btn{background:#14243a;border:1px solid var(--line);border-radius:12px;padding:10px 15px;color:var(--text);font:inherit;font-weight:650;cursor:pointer}.btn:hover{border-color:var(--accent)}.btn:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+    .status{padding:12px 15px;border:1px solid var(--line);border-radius:14px;background:var(--panel);margin-bottom:18px;color:var(--muted)}.status.stale{border-color:#a48037;color:#ffdf98}.status.error{border-color:#aa4d57;color:#ffd6da}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{min-width:0;background:rgba(16,29,48,.85);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 14px 35px rgba(0,0,0,.13)}
+    .panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}.count{font-size:14px;color:var(--muted)}.sub{font-size:14px;color:var(--muted);margin:2px 0 14px}
+    table{width:100%;border-collapse:collapse;text-align:left;font-variant-numeric:tabular-nums}th{font-size:13px;color:var(--muted);font-weight:650}th,td{padding:11px 8px;border-bottom:1px solid var(--line);vertical-align:top}td{font-size:14px}tr:last-child td{border:0}.primary{font-weight:700;color:var(--text)}.secondary{font-size:12px;color:var(--muted);display:block}.empty{padding:18px 8px;color:var(--muted)}.source{font-size:13px;color:var(--muted);margin-top:16px}.source a{color:var(--accent)}
+    @media(max-width:1080px){.grid{grid-template-columns:1fr}}@media(max-width:600px){.wrap{padding:13px}.panel{padding:13px}.table-wrap{overflow-x:auto}table{min-width:560px}th,td{padding:10px 7px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header><div><a class="back" href="/">← Ålgård-været</a><h1>Flytrafikk ved SVG</h1><p>Fly med registrert posisjon innen 200 km fra Stavanger lufthavn, Sola.</p></div><button id="refresh" class="btn" type="button">Oppdater</button></header>
+    <div id="status" class="status" role="status">Henter flydata …</div>
+    <div class="grid">
+      <section class="panel" aria-labelledby="aircraft-title"><div class="panel-head"><h2 id="aircraft-title">Fly i området</h2><span id="aircraft-count" class="count"></span></div><p class="sub">Høyde er barometrisk høyde over havet. Destinasjon vises bare når den kan bekreftes.</p><div class="table-wrap"><table><thead><tr><th>Fly</th><th>Type</th><th>Høyde</th><th>Destinasjon</th><th>Avstand</th></tr></thead><tbody id="aircraft-body"></tbody></table></div></section>
+      <section class="panel" aria-labelledby="schedule-title"><div class="panel-head"><h2 id="schedule-title">SVG · neste 3 timer</h2><span id="schedule-count" class="count"></span></div><p class="sub">Planlagte ankomster og avganger. Tidene vises i norsk tid.</p><div class="table-wrap"><table><thead><tr><th>Tid</th><th>Fly</th><th>Retning</th><th>Fra / til</th><th>Status</th></tr></thead><tbody id="schedule-body"></tbody></table></div><p class="source"><a href="https://www.avinor.no/">Flight data from Avinor.</a></p></section>
+    </div>
+    <p class="source">Posisjonsdata: <a href="https://adsb.lol/">adsb.lol</a>. Mottakerdekningen varierer; enkelte fly mangler. Destinasjon for overflyging er ikke oppgitt av posisjonskilden. Data oppdateres normalt hvert femte minutt, men publisering og mellomlagring kan gi ekstra forsinkelse. Ikke bruk visningen til flyoperative formål.</p>
+  </main>
+  <script>
+  (() => {
+    const DATA_URL = 'https://raw.githubusercontent.com/kennethfinn/algard-weather/flight-data/data.json';
+    const $ = id => document.getElementById(id);
+    const timeFormat = new Intl.DateTimeFormat('nb-NO',{timeZone:'Europe/Oslo',hour:'2-digit',minute:'2-digit'});
+    const dateFormat = new Intl.DateTimeFormat('nb-NO',{timeZone:'Europe/Oslo',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const statusNames = {A:'Ankommet',C:'Kansellert',D:'Avgått',E:'Ny tid',N:'Ny informasjon'};
+    let lastData = null;
+    function cell(row,value,secondary){
+      const td=document.createElement('td'),main=document.createElement('span');
+      main.textContent=value ?? '—';td.append(main);
+      if(secondary){const small=document.createElement('span');small.className='secondary';small.textContent=secondary;td.append(small)}
+      row.append(td);return td;
+    }
+    function empty(body,message){const row=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.className='empty';td.textContent=message;row.append(td);body.replaceChildren(row)}
+    function render(data){
+      const now=Date.now(),time=Date.parse(data.updated_at),age=now-time;
+      const status=$('status');status.className='status'+(age>15*60*1000?' stale':'');
+      status.textContent=`Datagrunnlag oppdatert ${dateFormat.format(time)} · ${Math.max(0,Math.round(age/60000))} min siden`+(age>15*60*1000?' · Dataene er forsinket':'')+'.';
+      const flights=(Array.isArray(data.flights)?data.flights:[]).filter(f=>{const t=Date.parse(f.scheduled);return t>=now && t<now+3*3600000});
+      const destinations=new Map(flights.filter(f=>f.direction==='D' && f.id && f.airport).map(f=>[f.id.trim().toUpperCase(),f.airport]));
+      const aircraft=(Array.isArray(data.aircraft)?data.aircraft:[]).filter(a=>a.distance_km<=200);
+      $('aircraft-count').textContent=`${aircraft.length} registrert`;
+      const ab=$('aircraft-body');ab.replaceChildren();
+      if(!aircraft.length)empty(ab,'Ingen fly med registrert posisjon i området i siste datagrunnlag.');
+      aircraft.forEach(a=>{const row=document.createElement('tr');const ident=cell(row,a.flight||a.registration||a.hex||'Ukjent',a.registration && a.flight?a.registration:null);ident.firstChild.className='primary';cell(row,a.type||'Ukjent',a.description||null);cell(row,typeof a.altitude_ft==='number'?`${Math.round(a.altitude_ft).toLocaleString('nb-NO')} ft`:a.altitude_ft==='ground'?'På bakken':'Ukjent');cell(row,destinations.get((a.flight||'').toUpperCase())||'Ukjent');cell(row,`${a.distance_km} km`);ab.append(row)});
+      $('schedule-count').textContent=`${flights.filter(f=>f.direction==='D').length} avganger · ${flights.filter(f=>f.direction==='A').length} ankomster`;
+      const sb=$('schedule-body');sb.replaceChildren();
+      if(!flights.length)empty(sb,'Ingen planlagte flyvninger funnet for de neste tre timene.');
+      flights.forEach(f=>{const row=document.createElement('tr');cell(row,timeFormat.format(Date.parse(f.scheduled)));cell(row,f.id).firstChild.className='primary';cell(row,f.direction==='D'?'Avgang':'Ankomst');cell(row,f.airport);cell(row,statusNames[f.status_code]||'Planlagt',f.status_code==='E'&&f.status_time?`Ny tid ${timeFormat.format(Date.parse(f.status_time))}`:null);sb.append(row)});
+    }
+    async function load(){
+      $('refresh').disabled=true;
+      try{
+        const response=await fetch(DATA_URL+'?t='+Date.now(),{cache:'no-store'});
+        if(!response.ok)throw new Error(`HTTP ${response.status}`);
+        const data=await response.json();
+        if(!data.updated_at||!Array.isArray(data.aircraft)||!Array.isArray(data.flights))throw new Error('Ugyldig datagrunnlag');
+        lastData=data;render(data);
+      }catch(error){
+        $('status').className='status error';
+        $('status').textContent=lastData?'Kunne ikke hente nye data. Viser sist hentede datagrunnlag.':'Flydata er ikke tilgjengelige ennå. Prøv igjen om litt.';
+        if(!lastData){empty($('aircraft-body'),'Flyposisjoner ikke tilgjengelige.');empty($('schedule-body'),'Flytider ikke tilgjengelige.')}
+        console.warn('Flydata:',error);
+      }finally{$('refresh').disabled=false}
+    }
+    $('refresh').addEventListener('click',load);load();setInterval(()=>{if(lastData)render(lastData);load()},5*60*1000);
+  })();
+  </script>
+</body>
+</html>
