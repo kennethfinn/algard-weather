@@ -1,0 +1,30 @@
+name: SVG flight data
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: svg-flight-data
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and validate flight feeds
+        run: python3 scripts/update_flights.py "$RUNNER_TEMP/data.json"
+      - name: Publish latest snapshot on flight-data branch
+        env:
+          SNAPSHOT: ${{ runner.temp }}/data.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan flight-data
+          git rm -rfq .
+          cp "$SNAPSHOT" data.json
+          git add data.json
+          git commit -m "Update SVG flight data"
+          git push --force origin HEAD:flight-data
