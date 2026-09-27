@@ -50,7 +50,8 @@
       const now=Date.now(),time=Date.parse(data.updated_at),age=now-time;
       const status=$('status');status.className='status'+(age>15*60*1000?' stale':'');
       status.textContent=`Datagrunnlag oppdatert ${dateFormat.format(time)} · ${Math.max(0,Math.round(age/60000))} min siden`+(age>15*60*1000?' · Dataene er forsinket':'')+'.';
-      const flights=(Array.isArray(data.flights)?data.flights:[]).filter(f=>{const t=Date.parse(f.scheduled);return t>=now && t<now+3*3600000});
+      const effectiveTime=f=>f.status_code==='E'&&f.status_time?Date.parse(f.status_time):Date.parse(f.scheduled);
+      const flights=(Array.isArray(data.flights)?data.flights:[]).filter(f=>{const t=effectiveTime(f);return t>=now && t<now+3*3600000}).sort((a,b)=>effectiveTime(a)-effectiveTime(b));
       const destinations=new Map(flights.filter(f=>f.direction==='D' && f.id && f.airport).map(f=>[f.id.trim().toUpperCase(),f.airport]));
       const aircraft=(Array.isArray(data.aircraft)?data.aircraft:[]).filter(a=>a.distance_km<=200);
       $('aircraft-count').textContent=`${aircraft.length} registrert`;
@@ -60,7 +61,7 @@
       $('schedule-count').textContent=`${flights.filter(f=>f.direction==='D').length} avganger · ${flights.filter(f=>f.direction==='A').length} ankomster`;
       const sb=$('schedule-body');sb.replaceChildren();
       if(!flights.length)empty(sb,'Ingen planlagte flyvninger funnet for de neste tre timene.');
-      flights.forEach(f=>{const row=document.createElement('tr');cell(row,timeFormat.format(Date.parse(f.scheduled)));cell(row,f.id).firstChild.className='primary';cell(row,f.direction==='D'?'Avgang':'Ankomst');cell(row,f.airport);cell(row,statusNames[f.status_code]||'Planlagt',f.status_code==='E'&&f.status_time?`Anslått ${timeFormat.format(Date.parse(f.status_time))}`:null);sb.append(row)});
+      flights.forEach(f=>{const row=document.createElement('tr');const changed=f.status_code==='E'&&f.status_time&&effectiveTime(f)!==Date.parse(f.scheduled);cell(row,timeFormat.format(effectiveTime(f)),changed?`Opprinnelig ${timeFormat.format(Date.parse(f.scheduled))}`:null);cell(row,f.id).firstChild.className='primary';cell(row,f.direction==='D'?'Avgang':'Ankomst');cell(row,f.airport);cell(row,statusNames[f.status_code]||'Planlagt');sb.append(row)});
     }
     async function load(){
       $('refresh').disabled=true;
