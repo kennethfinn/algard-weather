@@ -1,0 +1,44 @@
+name: RUNFEST start lists and results
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/update_runfest.py', '.github/workflows/runfest-data.yml']
+  schedule:
+    - cron: '4-59/5 6-22 3 10 *'
+    - cron: '19 7 4 10 *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: runfest-data
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Limit automatic collection to this event
+        id: window
+        run: |
+          if [[ "$(date -u +%Y-%m-%d)" < "2026-10-05" ]]; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Fetch and validate public start lists and results
+        if: steps.window.outputs.active == 'true'
+        run: python3 scripts/update_runfest.py "$RUNNER_TEMP/runfest-data.json"
+      - name: Publish latest snapshot
+        if: steps.window.outputs.active == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin runfest-data; then
+            git fetch origin runfest-data
+            git switch -C runfest-data FETCH_HEAD
+          else
+            git switch --orphan runfest-data
+          fi
+          cp "$RUNNER_TEMP/runfest-data.json" runfest-data.json
+          git add runfest-data.json
+          git commit -m "Update RUNFEST start lists and results"
+          git push origin HEAD:runfest-data

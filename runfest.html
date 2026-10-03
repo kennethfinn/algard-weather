@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08111f">
+  <meta name="description" content="RUNFEST i Sandnes 3. oktober 2026: program, startlister, resultater og timevarsel.">
+  <title>RUNFEST · Ålgård DidWell</title>
+  <link rel="icon" href="favicon-32.png">
+  <link rel="stylesheet" href="runfest.css?v=1.29">
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div><a class="back" href="./">← Ålgård-været</a><h1>RUNFEST</h1><p>Sandnes · lørdag 3. oktober 2026</p></div>
+    <nav class="actions" aria-label="RUNFEST"><a class="btn primary" href="runfest-weather.html">RUNFEST Weather →</a><button class="btn" id="refresh" type="button">Oppdater lister</button></nav>
+  </header>
+  <section class="panel">
+    <div class="table-wrap"><table class="schedule"><caption>Dagens løp</caption><thead><tr><th scope="col">Start</th><th scope="col">Løp</th><th scope="col">Deltakere og tider</th></tr></thead><tbody>
+      <tr><td>11:30</td><td>Halvmaraton · 21 km</td><td><a href="#half">Startliste / resultater ↓</a></td></tr>
+      <tr><td>15:00</td><td>10 km</td><td><a href="#10k">Startliste / resultater ↓</a></td></tr>
+      <tr><td>17:00</td><td>5 km miks</td><td><a href="#5k">Startliste / resultater ↓</a></td></tr>
+      <tr><td>18:15</td><td>5 km elite kvinner</td><td><a href="#women">Startliste / resultater ↓</a></td></tr>
+      <tr><td>18:35</td><td>5 km elite menn</td><td><a href="#men">Startliste / resultater ↓</a></td></tr>
+    </tbody></table></div>
+    <p class="note">Alle tider er norsk tid. 5 km miks og 10 km inkluderer deltakere med og uten tidtaking. <a href="https://www.runfestnorway.com/no/runners-info" target="_blank" rel="noopener">Program fra arrangøren ↗</a></p>
+  </section>
+  <div id="status" class="status" role="status">Henter startlister og resultater …</div>
+  <div id="races"></div>
+  <noscript><p>Slå på JavaScript for å vise startlistene, eller <a href="https://live.eqtiming.com/80878">åpne EQ Timing</a>.</p></noscript>
+  <footer>Startlister og resultater: <a href="https://live.eqtiming.com/80878" target="_blank" rel="noopener">EQ Timing ↗</a>. Nye data hentes normalt hvert femte minutt gjennom løpsdagen; forsinkelser kan forekomme. Siden sjekker etter oppdateringer hvert minutt mens den er åpen. Resultater kan bli korrigert av arrangøren. «Plass i klasse» er plasseringen fra EQ Timing. v1.29</footer>
+</main>
+<script src="runfest.js?v=1.29"></script>
+</body>
+</html>
